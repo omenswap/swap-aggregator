@@ -9,13 +9,13 @@ Inspired by [Trocador](https://trocador.app) and [OrangeFren](https://orangefren
 
 | Provider | API key required | KYC | Coins supported |
 |----------|------------------|-------|---------------|
-| FixedFloat | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 50+ more |
-| Exolix     | only for swap execution | never | XMR, BTC, ETH, USDT, USDC, 100+ more |
-| Omenswap   | no | never | XMR, BTC, ETH, USDT, USDC, SOL |
-| BitcoinVN | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 30+ more |
-| StealthEx  | yes | never | XMR, BTC, ETH, USDT, USDC, 100+ more |
-| WizardSwap | yes | never | XMR, BTC, LTC, ETH, BCH, DOGE |
-| SimpleSwap | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 100+ more |
+| [FixedFloat](https://ff.io) | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 50+ more |
+| [Exolix](https://exolix.com)     | only for swap execution | never | XMR, BTC, ETH, USDT, USDC, 100+ more |
+| [omenswap](https://omenswap.com) | no | never | XMR, BTC, ETH, USDT, USDC, SOL |
+| [BitcoinVN](https://bitcoinvn.io) | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 30+ more |
+| [StealthEx](https://stealthex.co) | yes | never | XMR, BTC, ETH, USDT, USDC, 100+ more |
+| [WizardSwap](https://wizardswap.io) | yes | never | XMR, BTC, LTC, ETH, BCH, DOGE |
+| [SimpleSwap](https://simpleswap.io) | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 100+ more |
 
 Open a PR to add a new site!
 
@@ -36,7 +36,7 @@ vim internal/server/static/style.css
 If you just want a local swap aggregator for getting the best deal on your own swaps, run locally
 ```bash
 # get the code
-git clone git@github.com:omenswap/swap-aggregator.git
+git clone https://github.com/omenswap/swap-aggregator.git
 cd ./swap-aggregator
 # make sure golang is installed on your device (https://go.dev)
 go run ./cmd/swap-aggregator/main.go

@@ -1,0 +1,47 @@
+listen = ":8000"
+cache_ttl = "30s"
+
+[[providers]]
+name = "omenswap"
+type = "omenswap"
+url = "https://omenswap.com"
+enabled = true
+affiliate_code = ""
+
+[[providers]]
+name = "changenow"
+type = "changenow"
+url = "https://api.changenow.io"
+enabled = true
+api_key = ""
+
+[[providers]]
+name = "exolix"
+type = "exolix"
+url = "https://exolix.com"
+enabled = true
+api_key = ""
+
+[[providers]]
+name = "stealthex"
+type = "stealthex"
+url = "https://api.stealthex.io"
+enabled = true
+api_key = ""
+# affiliate_code is stealthex additional_fee_percent, numeric e.g. "0.5"
+affiliate_code = ""
+
+[[providers]]
+name = "simpleswap"
+type = "simpleswap"
+url = "https://api.simpleswap.io"
+enabled = true
+api_key = ""
+
+[[providers]]
+name = "fixedfloat"
+type = "fixedfloat"
+url = "https://ff.io"
+enabled = true
+# fixedfloat api_key is "key:secret"
+api_key = ""

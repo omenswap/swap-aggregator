@@ -1,0 +1,26 @@
+{{template "header" .}}
+<main class="status-page">
+  <div class="status-line">
+    <span class="badge" id="swap-status" data-poll="{{.PollURL}}" data-state="{{.Swap.Status}}">{{.Swap.Status}}</span>
+    <span class="muted">{{.Swap.From}} &rarr; {{.Swap.To}} via {{.Provider}}</span>
+  </div>
+  <div class="deposit">
+    <span class="leg-label">send exactly</span>
+    <div class="deposit-amount">{{.Swap.FromAmount}} {{.Swap.From}}</div>
+    <span class="leg-label">to this address</span>
+    <div class="deposit-addr-row">
+      <span class="addr" id="deposit-addr">{{.Swap.DepositAddress}}</span>
+      <button type="button" class="copy" id="copy-addr">copy</button>
+    </div>
+  </div>
+  <dl>
+    <dt>you receive</dt><dd>&asymp; <span id="f-to-actual">{{if .Swap.ToAmountActual}}{{.Swap.ToAmountActual}}{{else}}{{.Swap.ToAmountEstimated}}{{end}}</span> {{.Swap.To}}</dd>
+    <dt>destination</dt><dd>{{.Swap.DestinationAddress}}</dd>
+    {{if .Swap.ExpiresAt}}<dt>expires</dt><dd>{{.Swap.ExpiresAt}}</dd>{{end}}
+    <dt>deposit tx</dt><dd id="f-deposit-tx">{{if .Swap.DepositTxHash}}{{.Swap.DepositTxHash}}{{else}}&mdash;{{end}}</dd>
+    <dt>payout tx</dt><dd id="f-payout-tx">{{if .Swap.PayoutTxHash}}{{.Swap.PayoutTxHash}}{{else}}&mdash;{{end}}</dd>
+    <dt>swap id</dt><dd>{{.Swap.ID}}</dd>
+  </dl>
+  <a class="back" href="/">&larr; new swap</a>
+</main>
+{{template "footer" .}}

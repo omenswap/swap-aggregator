@@ -1,0 +1,42 @@
+{{template "header" .}}
+<main>
+  <form method="post" action="/swap" id="swap-form" class="ticket">
+    {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+    <div class="pane">
+      <span class="leg-label">you send</span>
+      <div class="leg-row">
+        <input class="amount" name="amount" id="amount" inputmode="decimal" autocomplete="off" placeholder="0.0" required aria-label="amount to send">
+        <select class="token" name="from" id="from" aria-label="token to send">
+          {{range .Tokens}}<option value="{{.}}">{{.}}</option>{{end}}
+        </select>
+      </div>
+    </div>
+    <div class="flip-row">
+      <button type="button" class="flip" id="flip" aria-label="swap direction">&darr;&uarr;</button>
+    </div>
+    <div class="pane">
+      <span class="leg-label">you receive <span class="muted">(best estimate)</span></span>
+      <div class="leg-row">
+        <output class="amount est" id="est" aria-live="polite">&mdash;</output>
+        <select class="token" name="to" id="to" aria-label="token to receive">
+          {{range .Tokens}}<option value="{{.}}">{{.}}</option>{{end}}
+        </select>
+      </div>
+    </div>
+    <label class="field">
+      <span class="leg-label">destination address</span>
+      <input class="addr-input" name="destination_address" autocomplete="off" required>
+    </label>
+    <label class="field">
+      <span class="leg-label">refund address <span class="muted">(optional)</span></span>
+      <input class="addr-input" name="refund_address" autocomplete="off">
+    </label>
+    <button type="submit">get deposit address</button>
+  </form>
+  <aside class="results" id="quotes-panel" hidden>
+    <span class="leg-label">quotes</span>
+    <div id="quotes" class="quotes"></div>
+  </aside>
+</main>
+<script id="pair-data" type="application/json">{{.PairData}}</script>
+{{template "footer" .}}

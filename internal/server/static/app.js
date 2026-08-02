@@ -1,6 +1,11 @@
 (function () {
-  if (window.location.search.indexOf("error=") !== -1 && window.history.replaceState) {
-    window.history.replaceState({}, "", window.location.pathname);
+  var params = new URLSearchParams(window.location.search);
+  var preferredProvider = params.get("provider") || "";
+  // drop only the error so a refresh keeps the form the server prefilled
+  if (params.has("error") && window.history.replaceState) {
+    params.delete("error");
+    var rest = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (rest ? "?" + rest : ""));
   }
 
   var form = document.getElementById("swap-form");
@@ -128,16 +133,17 @@
 
     function renderQuotes(quotes) {
       quotesBox.innerHTML = "";
-      var bestQuote = null;
-      for (var b = 0; b < quotes.length; b++) {
-        if (!quotes[b].err && !quotes[b].quote_requires_api_key &&
-            !quotes[b].swap_requires_api_key && !quotes[b].link) {
-          bestQuote = quotes[b];
-          break;
-        }
-      }
+      var selectable = quotes.filter(function (q) {
+        return !q.err && !q.quote_requires_api_key && !q.swap_requires_api_key && !q.link;
+      });
+      var bestQuote = selectable[0] || null;
       var best = bestQuote ? bestQuote.to_amount : null;
       est.textContent = best ? fmt(best) : "—";
+      var target = bestQuote ? bestQuote.provider : "";
+      if (preferredProvider && selectable.some(function (q) { return q.provider === preferredProvider; })) {
+        target = preferredProvider;
+      }
+      preferredProvider = "";
       var checked = false;
       quotes.forEach(function (q, i) {
         var row;
@@ -171,7 +177,7 @@
           radio.setAttribute("form", "swap-form");
           radio.required = true;
           radio.disabled = !!q.err;
-          if (!q.err && !checked) {
+          if (!q.err && !checked && q.provider === target) {
             radio.checked = true;
             checked = true;
           }
@@ -282,9 +288,31 @@
         schedule();
       });
     }
+    var submitBtn = form.querySelector("button[type=submit]");
+    var submitLabel = submitBtn.textContent;
+
+    form.addEventListener("submit", function () {
+      form.classList.add("loading");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "creating swap";
+      var dots = document.createElement("span");
+      dots.className = "dots";
+      for (var d = 0; d < 3; d++) dots.appendChild(document.createElement("i"));
+      submitBtn.appendChild(dots);
+    });
+
+    // coming back via the back button restores the page mid-submit
+    window.addEventListener("pageshow", function (e) {
+      if (!e.persisted) return;
+      form.classList.remove("loading");
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitLabel;
+    });
+
     toSel.addEventListener("change", schedule);
     amountInput.addEventListener("input", schedule);
-    updateToOptions();
+    updateToOptions(toSel.value);
+    if (amountInput.value.trim()) refresh();
   }
 
   var statusEl = document.getElementById("swap-status");

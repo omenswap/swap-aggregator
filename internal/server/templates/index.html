@@ -5,9 +5,9 @@
     <div class="pane">
       <span class="leg-label">you send</span>
       <div class="leg-row">
-        <input class="amount" name="amount" id="amount" inputmode="decimal" autocomplete="off" placeholder="0.0" required aria-label="amount to send">
+        <input class="amount" name="amount" id="amount" inputmode="decimal" autocomplete="off" placeholder="0.0" required aria-label="amount to send" value="{{.Form.Amount}}">
         <select class="token" name="from" id="from" aria-label="token to send">
-          {{range .Tokens}}<option value="{{.}}">{{.}}</option>{{end}}
+          {{range .Tokens}}<option value="{{.}}"{{if eq . $.Form.From}} selected{{end}}>{{.}}</option>{{end}}
         </select>
       </div>
     </div>
@@ -19,17 +19,17 @@
       <div class="leg-row">
         <output class="amount est" id="est" aria-live="polite">&mdash;</output>
         <select class="token" name="to" id="to" aria-label="token to receive">
-          {{range .Tokens}}<option value="{{.}}">{{.}}</option>{{end}}
+          {{range .Tokens}}<option value="{{.}}"{{if eq . $.Form.To}} selected{{end}}>{{.}}</option>{{end}}
         </select>
       </div>
     </div>
     <label class="field">
       <span class="leg-label">destination address</span>
-      <input class="addr-input" name="destination_address" autocomplete="off" required>
+      <input class="addr-input" name="destination_address" autocomplete="off" required value="{{.Form.Destination}}">
     </label>
     <label class="field">
       <span class="leg-label">refund address <span class="muted">(optional)</span></span>
-      <input class="addr-input" name="refund_address" autocomplete="off">
+      <input class="addr-input" name="refund_address" autocomplete="off" value="{{.Form.Refund}}">
     </label>
     <button type="submit">get deposit address</button>
   </form>

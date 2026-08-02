@@ -33,18 +33,36 @@ func swapLink(p provider.Provider, req provider.QuoteRequest) string {
 	return ""
 }
 
+type formData struct {
+	Provider    string
+	From        string
+	To          string
+	Amount      string
+	Destination string
+	Refund      string
+}
+
 type indexData struct {
 	Tokens    []string
 	Providers []string
 	PairData  template.JS
 	Error     string
+	Form      formData
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	s.renderIndex(w, r.URL.Query().Get("error"))
+	q := r.URL.Query()
+	s.renderIndex(w, q.Get("error"), formData{
+		Provider:    q.Get("provider"),
+		From:        q.Get("from"),
+		To:          q.Get("to"),
+		Amount:      q.Get("amount"),
+		Destination: q.Get("destination_address"),
+		Refund:      q.Get("refund_address"),
+	})
 }
 
-func (s *Server) renderIndex(w http.ResponseWriter, errMsg string) {
+func (s *Server) renderIndex(w http.ResponseWriter, errMsg string, form formData) {
 	seen := map[string]bool{}
 	seenDir := map[[2]string]bool{}
 	var tokens []string
@@ -80,7 +98,8 @@ func (s *Server) renderIndex(w http.ResponseWriter, errMsg string) {
 	for _, p := range s.providers {
 		names = append(names, p.Name())
 	}
-	data := indexData{Tokens: tokens, Providers: names, PairData: template.JS(pairJSON), Error: errMsg}
+	data := indexData{Tokens: tokens, Providers: names, PairData: template.JS(pairJSON),
+		Error: errMsg, Form: form}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	s.tmpl.ExecuteTemplate(w, "index.html", data)
 }

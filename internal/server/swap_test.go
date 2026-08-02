@@ -91,9 +91,12 @@ func TestCreateSwapProviderError(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Errorf("status %d", rec.Code)
 	}
-	loc := rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "/?error=") || !strings.Contains(loc, "insufficient+reserves") {
-		t.Errorf("Location = %q", loc)
+	loc, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loc.Path != "/" || loc.Query().Get("error") != "omenswap: insufficient reserves" {
+		t.Errorf("Location = %q", rec.Header().Get("Location"))
 	}
 }
 
@@ -106,5 +109,51 @@ func TestIndexShowsErrorFromQuery(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "boom happened") {
 		t.Errorf("body missing error: %s", rec.Body.String())
+	}
+}
+
+func TestCreateSwapErrorKeepsFormValues(t *testing.T) {
+	f := &fakeProvider{name: "one", pairs: []provider.Pair{ethPair},
+		create: func(provider.SwapRequest) (provider.Swap, error) {
+			return provider.Swap{}, errors.New("invalid address")
+		}}
+	s := New([]provider.Provider{f}, time.Minute)
+	form := validForm()
+	form.Set("refund_address", "0xrefund")
+	rec := postSwap(s, form)
+	loc, err := url.Parse(rec.Header().Get("Location"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := loc.Query()
+	for key, want := range map[string]string{"amount": "1", "from": "ETH", "to": "USDC",
+		"destination_address": "0xdest", "refund_address": "0xrefund", "provider": "one"} {
+		if q.Get(key) != want {
+			t.Errorf("%s = %q, want %q", key, q.Get(key), want)
+		}
+	}
+}
+
+func TestIndexPrefillsFormFromQuery(t *testing.T) {
+	s := New([]provider.Provider{&fakeProvider{name: "one", pairs: []provider.Pair{ethPair}}}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET",
+		"/?error=nope&amount=2.5&from=USDC&to=ETH&destination_address=0xdest&refund_address=0xback", nil))
+	body := rec.Body.String()
+	for _, want := range []string{`value="2.5"`, `value="0xdest"`, `value="0xback"`,
+		`<option value="USDC" selected>`, `<option value="ETH" selected>`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("body missing %q:\n%s", want, body)
+		}
+	}
+}
+
+func TestIndexPrefillIsEscaped(t *testing.T) {
+	s := New([]provider.Provider{&fakeProvider{name: "one", pairs: []provider.Pair{ethPair}}}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET",
+		`/?destination_address=%22%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E`, nil))
+	if strings.Contains(rec.Body.String(), "<script>alert(1)") {
+		t.Errorf("unescaped prefill:\n%s", rec.Body.String())
 	}
 }

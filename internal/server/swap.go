@@ -40,7 +40,18 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	swap, err := p.CreateSwap(ctx, req)
 	if err != nil {
-		http.Redirect(w, r, "/?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+		q := url.Values{
+			"error":               {err.Error()},
+			"provider":            {name},
+			"from":                {req.From},
+			"to":                  {req.To},
+			"amount":              {req.Amount},
+			"destination_address": {req.DestinationAddress},
+		}
+		if req.RefundAddress != "" {
+			q.Set("refund_address", req.RefundAddress)
+		}
+		http.Redirect(w, r, "/?"+q.Encode(), http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/swap/"+url.PathEscape(name)+"/"+url.PathEscape(swap.ID), http.StatusSeeOther)

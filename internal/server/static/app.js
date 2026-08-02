@@ -25,12 +25,19 @@
       try { pairData = JSON.parse(pd.textContent); } catch (e) {}
     }
 
-    function updateToOptions() {
+    function updateToOptions(preferred) {
       var from = fromSel.value;
       var valid = pairData
         .filter(function (p) { return p[0] === from; })
         .map(function (p) { return p[1]; });
       if (!valid.length) return;
+      // Monero is the primary receive asset. Keep every other token in the
+      // backend-provided order, but surface XMR first whenever the pair exists.
+      valid.sort(function (a, b) {
+        if (a === "XMR") return -1;
+        if (b === "XMR") return 1;
+        return 0;
+      });
       var cur = toSel.value;
       toSel.innerHTML = "";
       valid.forEach(function (t) {
@@ -39,7 +46,13 @@
         o.textContent = t;
         toSel.appendChild(o);
       });
-      if (valid.indexOf(cur) !== -1) toSel.value = cur;
+      if (preferred && valid.indexOf(preferred) !== -1) {
+        toSel.value = preferred;
+      } else if (valid.indexOf("XMR") !== -1) {
+        toSel.value = "XMR";
+      } else if (valid.indexOf(cur) !== -1) {
+        toSel.value = cur;
+      }
     }
 
     function fmt(s) {
@@ -265,13 +278,7 @@
       flip.addEventListener("click", function () {
         var oldFrom = fromSel.value, oldTo = toSel.value;
         fromSel.value = oldTo;
-        updateToOptions();
-        for (var i = 0; i < toSel.options.length; i++) {
-          if (toSel.options[i].value === oldFrom) {
-            toSel.value = oldFrom;
-            break;
-          }
-        }
+        updateToOptions(oldFrom);
         schedule();
       });
     }

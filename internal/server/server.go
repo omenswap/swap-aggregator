@@ -21,9 +21,12 @@ type Server struct {
 	byName        map[string]provider.Provider
 	pairCache     *cache.Cache[[]provider.Pair]
 	credentialKey []byte
+	themeCSS      string
 	tmpl          *template.Template
 	mux           *http.ServeMux
 }
+
+func (s *Server) SetThemeCSS(css string) { s.themeCSS = css }
 
 func New(providers []provider.Provider, ttl time.Duration) *Server {
 	s := &Server{
@@ -45,6 +48,10 @@ func New(providers []provider.Provider, ttl time.Duration) *Server {
 	s.mux.HandleFunc("GET /swap/{provider}/{id}", s.handleStatusPage)
 	s.mux.HandleFunc("GET /api/swap/{provider}/{id}", s.handleStatusJSON)
 	s.mux.Handle("GET /static/", http.FileServerFS(assets))
+	s.mux.HandleFunc("GET /theme.css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+		w.Write([]byte(s.themeCSS))
+	})
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})

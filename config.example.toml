@@ -1,19 +1,24 @@
 listen = ":8000"
 cache_ttl = "30s"
 
+# every key is optional; unset keys keep the built-in black and white theme
+[theme]
+background = "#000000"
+text = "#ffffff"
+muted = "#999999"
+faint = "#666666"
+border = "#333333"
+border_hover = "#666666"
+row_hover = "#111111"
+font = "ui-monospace, Menlo, Consolas, monospace"
+color_scheme = "dark"
+
 [[providers]]
 name = "omenswap"
 type = "omenswap"
 url = "https://omenswap.com"
 enabled = true
 affiliate_code = ""
-
-[[providers]]
-name = "exolix"
-type = "exolix"
-url = "https://exolix.com"
-enabled = true
-api_key = ""
 
 [[providers]]
 name = "stealthex"

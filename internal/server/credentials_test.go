@@ -21,9 +21,11 @@ type credentialedFake struct {
 func (f *credentialedFake) Brokered() bool { return f.apiKey != "" }
 
 func (f *credentialedFake) WithAPIKey(apiKey string) (provider.Provider, error) {
-	clone := *f
-	clone.apiKey = apiKey
-	return &clone, nil
+	return &credentialedFake{
+		fakeProvider: fakeProvider{name: f.name, pairs: f.pairs, pairsErr: f.pairsErr,
+			quote: f.quote, create: f.create, status: f.status},
+		apiKey: apiKey,
+	}, nil
 }
 
 func (f *credentialedFake) Quote(_ context.Context, _ provider.QuoteRequest) (provider.Quote, error) {

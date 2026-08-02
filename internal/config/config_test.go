@@ -126,3 +126,63 @@ enabled = true
 		t.Errorf("err = %v", err)
 	}
 }
+
+const themeProvider = `
+[[providers]]
+name = "omenswap"
+type = "omenswap"
+url = "http://localhost:8080"
+enabled = true
+`
+
+func TestThemeCSS(t *testing.T) {
+	p := writeTemp(t, themeProvider+`
+[theme]
+background = "#101010"
+text = "#eeeeee"
+border = "#444"
+font = "Inter, sans-serif"
+color_scheme = "light"
+`)
+	c, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := c.Theme.CSS()
+	for _, want := range []string{"--bg: #101010;", "--ink: #eeeeee;", "--line: #444;",
+		"--mono: Inter, sans-serif;", "color-scheme: light;"} {
+		if !strings.Contains(css, want) {
+			t.Errorf("css missing %q:\n%s", want, css)
+		}
+	}
+	if strings.Contains(css, "--muted") {
+		t.Errorf("unset key should be omitted:\n%s", css)
+	}
+}
+
+func TestThemeEmptyCSS(t *testing.T) {
+	c, err := Load(writeTemp(t, themeProvider))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if css := c.Theme.CSS(); css != "" {
+		t.Errorf("css = %q", css)
+	}
+}
+
+func TestThemeRejectsInvalidColor(t *testing.T) {
+	for _, bad := range []string{`background = "red; } body { display: none"`, `background = "url(x)"`, `text = "rgb(1,2,3)"`} {
+		if _, err := Load(writeTemp(t, themeProvider+"\n[theme]\n"+bad)); err == nil {
+			t.Errorf("%s: expected error", bad)
+		}
+	}
+}
+
+func TestThemeRejectsInvalidFontAndScheme(t *testing.T) {
+	if _, err := Load(writeTemp(t, themeProvider+"\n[theme]\nfont = \"Inter; } html {\"")); err == nil {
+		t.Error("expected font error")
+	}
+	if _, err := Load(writeTemp(t, themeProvider+"\n[theme]\ncolor_scheme = \"neon\"")); err == nil {
+		t.Error("expected color_scheme error")
+	}
+}

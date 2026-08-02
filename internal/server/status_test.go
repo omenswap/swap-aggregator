@@ -101,3 +101,34 @@ func TestStatusJSONErrors(t *testing.T) {
 		t.Errorf("body: %s", rec.Body.String())
 	}
 }
+
+func TestStatusPageIncludesQR(t *testing.T) {
+	f := &fakeProvider{name: "one", status: func(string) (provider.Swap, error) {
+		return provider.Swap{ID: "abc", Status: "pending", From: "BTC", To: "XMR",
+			DepositAddress: "bc1q4r04hxptugjtl6cmvkggz5t0f7plqj4e7napft"}, nil
+	}}
+	s := New([]provider.Provider{f}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/swap/one/abc", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `<svg class="qr"`) {
+		t.Errorf("status page has no qr code: %s", rec.Body.String())
+	}
+}
+
+func TestStatusPageWithoutDepositAddressHasNoQR(t *testing.T) {
+	f := &fakeProvider{name: "one", status: func(string) (provider.Swap, error) {
+		return provider.Swap{ID: "abc", Status: "expired", From: "BTC", To: "XMR"}, nil
+	}}
+	s := New([]provider.Provider{f}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/swap/one/abc", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d", rec.Code)
+	}
+	if strings.Contains(rec.Body.String(), "<svg") {
+		t.Errorf("expected no qr code: %s", rec.Body.String())
+	}
+}

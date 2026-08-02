@@ -394,9 +394,25 @@ button[type="submit"]:disabled { cursor: wait; }
   border: 1px solid var(--ink);
   padding: 1rem;
   display: flex;
+  align-items: flex-start;
+  gap: 1.2rem;
+}
+
+.deposit-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
+
+.qr-box {
+  flex-shrink: 0;
+  background: #fff;
+  padding: 0.35rem;
+  line-height: 0;
+}
+.qr { width: 132px; height: 132px; display: block; }
 
 .deposit-amount {
   font-size: 1.3rem;
@@ -445,6 +461,7 @@ dd { margin: 0; word-break: break-all; }
 }
 
 @media (max-width: 480px) {
+  .deposit { flex-direction: column; align-items: center; }
   .pane .amount, .est { font-size: 1.2rem; }
   .token { min-width: 6rem; }
   .q-meta { display: none; }

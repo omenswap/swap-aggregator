@@ -5,13 +5,16 @@
     <span class="muted">{{.Swap.From}} &rarr; {{.Swap.To}} via {{.Provider}}</span>
   </div>
   <div class="deposit">
-    <span class="leg-label">send exactly</span>
-    <div class="deposit-amount">{{.Swap.FromAmount}} {{.Swap.From}}</div>
-    <span class="leg-label">to this address</span>
-    <div class="deposit-addr-row">
-      <span class="addr" id="deposit-addr">{{.Swap.DepositAddress}}</span>
-      <button type="button" class="copy" id="copy-addr">copy</button>
+    <div class="deposit-main">
+      <span class="leg-label">send exactly</span>
+      <div class="deposit-amount">{{.Swap.FromAmount}} {{.Swap.From}}</div>
+      <span class="leg-label">to this address</span>
+      <div class="deposit-addr-row">
+        <span class="addr" id="deposit-addr">{{.Swap.DepositAddress}}</span>
+        <button type="button" class="copy" id="copy-addr">copy</button>
+      </div>
     </div>
+    {{if .QR}}<div class="qr-box">{{.QR}}</div>{{end}}
   </div>
   <dl>
     <dt>you receive</dt><dd>&asymp; <span id="f-to-actual">{{if .Swap.ToAmountActual}}{{.Swap.ToAmountActual}}{{else}}{{.Swap.ToAmountEstimated}}{{end}}</span> {{.Swap.To}}</dd>

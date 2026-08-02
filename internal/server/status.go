@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"html/template"
 	"net/http"
 	"net/url"
 
@@ -63,6 +64,7 @@ type statusData struct {
 	Provider string
 	Swap     swapJSON
 	PollURL  string
+	QR       template.HTML
 }
 
 func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +78,9 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		Provider: name,
 		Swap:     toSwapJSON(swap),
 		PollURL:  "/api/swap/" + url.PathEscape(name) + "/" + url.PathEscape(swap.ID),
+	}
+	if code, err := qrSVG(swap.DepositAddress); err == nil {
+		data.QR = code
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	s.tmpl.ExecuteTemplate(w, "status.html", data)

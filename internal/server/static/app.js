@@ -1,4 +1,8 @@
 (function () {
+  if (window.location.search.indexOf("error=") !== -1 && window.history.replaceState) {
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+
   var form = document.getElementById("swap-form");
   if (form) {
     var fromSel = document.getElementById("from");
@@ -73,12 +77,19 @@
             checked = true;
           }
           row.appendChild(radio);
+          var mark = document.createElement("span");
+          mark.className = "q-mark";
+          mark.textContent = "✓";
+          row.appendChild(mark);
         }
 
         var nameWrap = document.createElement("span");
         var name = document.createElement("span");
         name.className = "q-name";
-        name.textContent = q.provider;
+        var label = document.createElement("span");
+        label.className = "q-label";
+        label.textContent = q.provider;
+        name.appendChild(label);
         if (i === 0 && !q.err) {
           var tag = document.createElement("span");
           tag.className = "best-tag";

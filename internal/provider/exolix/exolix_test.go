@@ -44,7 +44,7 @@ func TestQuoteComputesAmount(t *testing.T) {
 	var query map[string]string
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v2/rate", func(w http.ResponseWriter, r *http.Request) {
-		auth = r.Header.Get("Authorization")
+		auth = r.Header.Get("api-key")
 		query = map[string]string{}
 		for k := range r.URL.Query() {
 			query[k] = r.URL.Query().Get(k)
@@ -60,7 +60,7 @@ func TestQuoteComputesAmount(t *testing.T) {
 		t.Fatalf("quote err: %s", q.Err)
 	}
 	if auth != "test-key" {
-		t.Errorf("Authorization = %q", auth)
+		t.Errorf("api-key = %q", auth)
 	}
 	if query["coinFrom"] != "BTC" || query["networkFrom"] != "BTC" ||
 		query["coinTo"] != "ETH" || query["networkTo"] != "ETH" ||
@@ -129,7 +129,7 @@ func TestCreateSwap(t *testing.T) {
 	var body map[string]any
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v2/transactions", func(w http.ResponseWriter, r *http.Request) {
-		auth = r.Header.Get("Authorization")
+		auth = r.Header.Get("api-key")
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Error(err)
 		}
@@ -144,7 +144,7 @@ func TestCreateSwap(t *testing.T) {
 		t.Fatal(err)
 	}
 	if auth != "test-key" {
-		t.Errorf("Authorization = %q", auth)
+		t.Errorf("api-key = %q", auth)
 	}
 	if body["coinFrom"] != "ETH" || body["networkFrom"] != "ETH" ||
 		body["coinTo"] != "USDC" || body["networkTo"] != "ETH" ||
@@ -261,10 +261,14 @@ func TestPairsExcludesSameToken(t *testing.T) {
 	}
 }
 
-func TestGatingAndSwapLink(t *testing.T) {
+func TestBrokeredWithoutKey(t *testing.T) {
 	keyless, _ := New(config.Provider{Name: "exolix", URL: "https://exolix.com", AffiliateCode: "ref1"})
-	if keyless.(provider.Gated).Brokered() {
-		t.Error("expected not brokered without key")
+	if !keyless.(provider.Gated).Brokered() {
+		t.Error("exolix api key is optional: expected brokered without key")
+	}
+	keyed, _ := New(config.Provider{Name: "exolix", URL: "https://exolix.com", APIKey: "k"})
+	if !keyed.(provider.Gated).Brokered() {
+		t.Error("expected brokered with key")
 	}
 	link := keyless.(provider.Linker).SwapLink(provider.QuoteRequest{From: "BTC", To: "XMR", Amount: "0.5"})
 	for _, want := range []string{"exolix.com", "from=BTC", "to=XMR", "amount=0.5", "ref=ref1"} {
@@ -272,8 +276,10 @@ func TestGatingAndSwapLink(t *testing.T) {
 			t.Errorf("link %q missing %q", link, want)
 		}
 	}
-	keyed, _ := New(config.Provider{Name: "exolix", URL: "https://exolix.com", APIKey: "k"})
-	if !keyed.(provider.Gated).Brokered() {
-		t.Error("expected brokered with key")
+}
+
+func TestStatusRefund(t *testing.T) {
+	if mapStatus("refund") != "refunded" {
+		t.Errorf("refund mapped to %q", mapStatus("refund"))
 	}
 }

@@ -88,10 +88,23 @@ func TestCreateSwapProviderError(t *testing.T) {
 		}}
 	s := New([]provider.Provider{f}, time.Minute)
 	rec := postSwap(s, validForm())
-	if rec.Code != http.StatusBadGateway {
+	if rec.Code != http.StatusSeeOther {
 		t.Errorf("status %d", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "insufficient reserves") {
+	loc := rec.Header().Get("Location")
+	if !strings.HasPrefix(loc, "/?error=") || !strings.Contains(loc, "insufficient+reserves") {
+		t.Errorf("Location = %q", loc)
+	}
+}
+
+func TestIndexShowsErrorFromQuery(t *testing.T) {
+	s := New([]provider.Provider{&fakeProvider{name: "one", pairs: []provider.Pair{ethPair}}}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/?error=boom+happened", nil))
+	if rec.Code != http.StatusOK {
+		t.Errorf("status %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "boom happened") {
 		t.Errorf("body missing error: %s", rec.Body.String())
 	}
 }

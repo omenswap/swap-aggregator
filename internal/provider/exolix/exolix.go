@@ -48,6 +48,7 @@ var statusMap = map[string]string{
 	"sending":      "deposited",
 	"success":      "completed",
 	"overdue":      "expired",
+	"refund":       "refunded",
 	"refunded":     "refunded",
 }
 
@@ -59,7 +60,7 @@ type client struct {
 	http      *http.Client
 }
 
-func (c *client) Brokered() bool { return c.apiKey != "" }
+func (c *client) Brokered() bool { return true }
 
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}
@@ -315,7 +316,7 @@ func (c *client) do(req *http.Request, out any) error {
 
 func (c *client) auth(req *http.Request) {
 	if c.apiKey != "" {
-		req.Header.Set("Authorization", c.apiKey)
+		req.Header.Set("api-key", c.apiKey)
 	}
 }
 

@@ -9,13 +9,6 @@ enabled = true
 affiliate_code = ""
 
 [[providers]]
-name = "changenow"
-type = "changenow"
-url = "https://api.changenow.io"
-enabled = true
-api_key = ""
-
-[[providers]]
 name = "exolix"
 type = "exolix"
 url = "https://exolix.com"
@@ -45,3 +38,28 @@ url = "https://ff.io"
 enabled = true
 # fixedfloat api_key is "key:secret"
 api_key = ""
+
+[[providers]]
+name = "wizardswap"
+type = "wizardswap"
+url = "https://www.wizardswap.io"
+enabled = true
+api_key = ""
+affiliate_code = ""
+
+[[providers]]
+name = "bitcoinvn"
+type = "bitcoinvn"
+url = "https://bitcoinvn.io"
+enabled = true
+api_key = ""
+affiliate_code = ""
+
+[[providers]]
+name = "etzswap"
+type = "etzswap"
+url = "https://api.etz-swap.com"
+enabled = true
+# etzswap api_key is "public:secret"
+api_key = ""
+affiliate_code = ""

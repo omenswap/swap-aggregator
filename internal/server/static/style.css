@@ -79,7 +79,7 @@ main {
   border: 1px solid var(--line);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
   padding: 1.1rem 1rem;
-  width: 360px;
+  width: 400px;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -191,26 +191,55 @@ input:focus, select:focus { outline: none; }
 .quotes { display: flex; flex-direction: column; }
 
 .quote-row {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1.1rem 1fr auto;
   align-items: center;
   gap: 0.9rem;
   padding: 0.7rem 0.8rem;
-  border: 1px solid transparent;
+  border-left: 2px solid transparent;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
   font-variant-numeric: tabular-nums;
-  transition: background 0.12s;
+  transition: background 0.12s, border-color 0.12s;
 }
 .quote-row:last-child { border-bottom-color: transparent; }
 .quote-row:hover { background: var(--pane); }
-.quote-row.best { background: var(--accent-dim); border-color: var(--accent); }
 .quote-row.err { cursor: default; }
 
-.quote-row input[type="radio"] { accent-color: var(--accent); width: 1rem; height: 1rem; }
+.quote-row input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.quote-row:has(input:checked) {
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
+}
+.quote-row:focus-within { background: var(--pane-hi); }
+
+.q-mark {
+  color: var(--accent-hi);
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.quote-row:hover .q-mark { opacity: 0.35; }
+.quote-row:has(input:checked) .q-mark { opacity: 1; }
 
 .quote-row > span { min-width: 0; }
-.q-name { font-weight: 600; font-size: 0.95rem; }
+.q-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.q-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .q-meta {
   color: var(--faint);
   font-size: 0.78rem;
@@ -221,7 +250,7 @@ input:focus, select:focus { outline: none; }
   white-space: nowrap;
 }
 .q-out { font-family: var(--mono); font-size: 1rem; text-align: right; white-space: nowrap; }
-.quote-row.best .q-out { color: var(--accent-hi); }
+.quote-row:has(input:checked) .q-out { color: var(--accent-hi); }
 .q-err { font-size: 0.82rem; color: var(--faint); text-align: right; }
 
 .best-tag {
@@ -234,6 +263,7 @@ input:focus, select:focus { outline: none; }
   padding: 0.1rem 0.4rem;
   margin-left: 0.55rem;
   vertical-align: middle;
+  flex-shrink: 0;
 }
 
 a.quote-row { color: var(--ink); text-decoration: none; }

@@ -12,12 +12,14 @@ import (
 
 	"omenswap.com/swap-aggregator/internal/config"
 	"omenswap.com/swap-aggregator/internal/provider"
-	_ "omenswap.com/swap-aggregator/internal/provider/changenow"
+	_ "omenswap.com/swap-aggregator/internal/provider/bitcoinvn"
+	_ "omenswap.com/swap-aggregator/internal/provider/etzswap"
 	_ "omenswap.com/swap-aggregator/internal/provider/exolix"
 	_ "omenswap.com/swap-aggregator/internal/provider/fixedfloat"
 	_ "omenswap.com/swap-aggregator/internal/provider/omenswap"
 	_ "omenswap.com/swap-aggregator/internal/provider/simpleswap"
 	_ "omenswap.com/swap-aggregator/internal/provider/stealthex"
+	_ "omenswap.com/swap-aggregator/internal/provider/wizardswap"
 	"omenswap.com/swap-aggregator/internal/server"
 )
 

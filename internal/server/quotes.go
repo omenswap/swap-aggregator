@@ -38,7 +38,7 @@ type indexData struct {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	s.renderIndex(w, "")
+	s.renderIndex(w, r.URL.Query().Get("error"))
 }
 
 func (s *Server) renderIndex(w http.ResponseWriter, errMsg string) {
@@ -79,9 +79,6 @@ func (s *Server) renderIndex(w http.ResponseWriter, errMsg string) {
 	}
 	data := indexData{Tokens: tokens, Providers: names, PairData: template.JS(pairJSON), Error: errMsg}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if errMsg != "" {
-		w.WriteHeader(http.StatusBadGateway)
-	}
 	s.tmpl.ExecuteTemplate(w, "index.html", data)
 }
 

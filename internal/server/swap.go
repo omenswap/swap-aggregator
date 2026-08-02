@@ -39,7 +39,7 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	swap, err := p.CreateSwap(ctx, req)
 	if err != nil {
-		s.renderIndex(w, err.Error())
+		http.Redirect(w, r, "/?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 	http.Redirect(w, r, "/swap/"+url.PathEscape(name)+"/"+url.PathEscape(swap.ID), http.StatusSeeOther)

@@ -296,8 +296,8 @@ func TestPairsExcludesSameToken(t *testing.T) {
 
 func TestGatingAndSwapLink(t *testing.T) {
 	keyless, _ := New(config.Provider{Name: "etzswap", URL: "https://api.etz-swap.com", AffiliateCode: "ref1"})
-	if keyless.(provider.Gated).Brokered() {
-		t.Error("expected not brokered without key")
+	if !keyless.(provider.Gated).Brokered() {
+		t.Error("api key is optional: expected brokered without key")
 	}
 	link := keyless.(provider.Linker).SwapLink(provider.QuoteRequest{From: "BTC", To: "XMR", Amount: "0.5"})
 	for _, want := range []string{"etz-swap.com", "coinFrom=BTC", "networkFrom=BTC", "coinTo=XMR", "networkTo=XMR", "amountFrom=0.5", "rateType=float", "affiliateToken=ref1"} {

@@ -61,7 +61,7 @@ type client struct {
 	http      *http.Client
 }
 
-func (c *client) Brokered() bool { return c.apiKey != "" }
+func (c *client) Brokered() bool { return true }
 
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}

@@ -356,6 +356,32 @@
     }
   }
 
+  var rows = document.querySelectorAll(".swap-state[data-poll]");
+  if (rows.length) {
+    var done = ["completed", "expired", "refunded", "failed"];
+    rows.forEach(function (el) {
+      function load() {
+        fetch(el.dataset.poll)
+          .then(function (r) { return r.json(); })
+          .then(function (s) {
+            if (s.error) {
+              el.textContent = "unknown";
+              return;
+            }
+            el.textContent = s.status;
+            el.dataset.state = s.status;
+            if (done.indexOf(s.status) !== -1) {
+              el.setAttribute("data-terminal", "");
+            } else {
+              setTimeout(load, 15000);
+            }
+          })
+          .catch(function () { el.textContent = "unknown"; });
+      }
+      load();
+    });
+  }
+
   var copyBtn = document.getElementById("copy-addr");
   if (copyBtn) {
     copyBtn.addEventListener("click", function () {

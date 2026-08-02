@@ -45,6 +45,7 @@ func New(providers []provider.Provider, ttl time.Duration) *Server {
 	s.mux.HandleFunc("GET /api/quotes", s.handleQuotes)
 	s.mux.HandleFunc("POST /api/provider-keys", s.handleProviderKey)
 	s.mux.HandleFunc("POST /swap", s.handleCreateSwap)
+	s.mux.HandleFunc("GET /swaps", s.handleSwapsPage)
 	s.mux.HandleFunc("GET /swap/{provider}/{id}", s.handleStatusPage)
 	s.mux.HandleFunc("GET /api/swap/{provider}/{id}", s.handleStatusJSON)
 	s.mux.Handle("GET /static/", http.FileServerFS(assets))

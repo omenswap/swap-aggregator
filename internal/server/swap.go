@@ -54,5 +54,7 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/?"+q.Encode(), http.StatusSeeOther)
 		return
 	}
+	recordSwap(w, r, sessionSwap{Provider: name, ID: swap.ID,
+		From: req.From, To: req.To, Amount: req.Amount})
 	http.Redirect(w, r, "/swap/"+url.PathEscape(name)+"/"+url.PathEscape(swap.ID), http.StatusSeeOther)
 }

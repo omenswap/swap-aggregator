@@ -1,0 +1,22 @@
+{{template "header" .}}
+<main class="swaps-page">
+  <span class="leg-label">this session</span>
+  {{if .Swaps}}
+  <div class="swap-list">
+    {{range .Swaps}}
+    <a class="swap-row" href="{{.URL}}">
+      <span class="badge swap-state" data-poll="{{.PollURL}}">&hellip;</span>
+      <span class="swap-pair">
+        <strong>{{.Amount}} {{.From}} &rarr; {{.To}}</strong>
+        <span class="swap-meta">{{.Provider}}{{if .Created}} &middot; {{.Created}}{{end}}</span>
+      </span>
+      <span class="swap-id">{{.ID}}</span>
+    </a>
+    {{end}}
+  </div>
+  {{else}}
+  <p class="muted">no swaps yet in this session</p>
+  {{end}}
+  <a class="back" href="/">&larr; new swap</a>
+</main>
+{{template "footer" .}}

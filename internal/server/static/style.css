@@ -27,7 +27,20 @@ body {
   width: 100%;
   max-width: 900px;
   padding: 1.5rem 1rem 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
 }
+
+.nav-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.nav-link:hover { color: var(--ink); }
 
 .wordmark {
   font-size: 0.95rem;
@@ -446,6 +459,42 @@ dl {
 }
 dt { color: var(--muted); }
 dd { margin: 0; word-break: break-all; }
+
+.swaps-page {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  max-width: 680px;
+}
+
+.swap-list { border: 1px solid var(--line); }
+
+.swap-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.swap-row:last-child { border-bottom: none; }
+.swap-row:hover { background: var(--hover); }
+
+.swap-pair { min-width: 0; font-size: 0.9rem; }
+.swap-pair strong { font-weight: 400; }
+.swap-meta { display: block; color: var(--faint); font-size: 0.72rem; }
+.swap-id {
+  color: var(--faint);
+  font-size: 0.72rem;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.swap-state { text-align: center; }
 
 .back { color: var(--muted); text-decoration: none; font-size: 0.85rem; }
 .back:hover { color: var(--ink); }

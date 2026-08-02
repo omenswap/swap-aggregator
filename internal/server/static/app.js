@@ -12,6 +12,12 @@
     var quotesPanel = document.getElementById("quotes-panel");
     var est = document.getElementById("est");
     var flip = document.getElementById("flip");
+    var keyDialog = document.getElementById("api-key-dialog");
+    var keyForm = document.getElementById("api-key-form");
+    var keyInput = document.getElementById("api-key-input");
+    var keyProvider = document.getElementById("api-key-provider");
+    var keyError = document.getElementById("api-key-error");
+    var activeKeyProvider = "";
     var timer = null;
     var pairData = [];
     var pd = document.getElementById("pair-data");
@@ -45,26 +51,106 @@
       return cut;
     }
 
+    function closeKeyDialog() {
+      if (!keyDialog) return;
+      keyDialog.close();
+      keyInput.value = "";
+      keyError.hidden = true;
+      keyError.textContent = "";
+      activeKeyProvider = "";
+    }
+
+    function openKeyDialog(providerName) {
+      if (!keyDialog) return;
+      activeKeyProvider = providerName;
+      keyProvider.textContent = providerName;
+      keyError.hidden = true;
+      keyDialog.showModal();
+      setTimeout(function () { keyInput.focus(); }, 0);
+    }
+
+    if (keyDialog) {
+      document.getElementById("api-key-close").addEventListener("click", closeKeyDialog);
+      document.getElementById("api-key-cancel").addEventListener("click", closeKeyDialog);
+      keyDialog.addEventListener("click", function (e) {
+        if (e.target === keyDialog) closeKeyDialog();
+      });
+      keyDialog.addEventListener("cancel", function (e) {
+        e.preventDefault();
+        closeKeyDialog();
+      });
+      keyForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var key = keyInput.value.trim();
+        if (!activeKeyProvider || !key) return;
+        var submit = keyForm.querySelector("button[type=submit]");
+        submit.disabled = true;
+        submit.textContent = "saving…";
+        keyError.hidden = true;
+        fetch("/api/provider-keys", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider: activeKeyProvider, api_key: key })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || "could not save API key");
+              return data;
+            });
+          })
+          .then(function () {
+            closeKeyDialog();
+            refresh();
+          })
+          .catch(function (err) {
+            keyError.textContent = err.message;
+            keyError.hidden = false;
+          })
+          .finally(function () {
+            submit.disabled = false;
+            submit.textContent = "add API key";
+          });
+      });
+    }
+
     function renderQuotes(quotes) {
       quotesBox.innerHTML = "";
-      var best = quotes.length && !quotes[0].err ? quotes[0].to_amount : null;
+      var bestQuote = null;
+      for (var b = 0; b < quotes.length; b++) {
+        if (!quotes[b].err && !quotes[b].quote_requires_api_key &&
+            !quotes[b].swap_requires_api_key && !quotes[b].link) {
+          bestQuote = quotes[b];
+          break;
+        }
+      }
+      var best = bestQuote ? bestQuote.to_amount : null;
       est.textContent = best ? fmt(best) : "—";
       var checked = false;
       quotes.forEach(function (q, i) {
         var row;
-        if (q.link) {
+        var quoteLocked = !!q.quote_requires_api_key;
+        var swapLocked = !!q.swap_requires_api_key;
+        var showKeyAction = quoteLocked || swapLocked || (q.has_api_key && q.err);
+        if (showKeyAction) {
+          row = document.createElement("div");
+          row.className = "quote-row gated" + (q.err ? " err" : "");
+          var mark = document.createElement("span");
+          mark.className = "q-key-mark";
+          mark.textContent = "key";
+          row.appendChild(mark);
+        } else if (q.link) {
           row = document.createElement("a");
           row.href = q.link;
           row.target = "_blank";
           row.rel = "noopener nofollow";
-          row.className = "quote-row link" + (q.err ? " err" : i === 0 ? " best" : "");
+          row.className = "quote-row link" + (q.err ? " err" : "");
           var mark = document.createElement("span");
           mark.className = "q-ext";
           mark.textContent = "↗";
           row.appendChild(mark);
         } else {
           row = document.createElement("label");
-          row.className = "quote-row" + (q.err ? " err" : i === 0 ? " best" : "");
+          row.className = "quote-row" + (q.err ? " err" : bestQuote && q.provider === bestQuote.provider ? " best" : "");
           var radio = document.createElement("input");
           radio.type = "radio";
           radio.name = "provider";
@@ -90,23 +176,52 @@
         label.className = "q-label";
         label.textContent = q.provider;
         name.appendChild(label);
-        if (i === 0 && !q.err) {
+        if (bestQuote && q.provider === bestQuote.provider) {
           var tag = document.createElement("span");
           tag.className = "best-tag";
           tag.textContent = "best";
           name.appendChild(tag);
         }
         nameWrap.appendChild(name);
-        if (!q.err && (q.rate || q.fee || q.link)) {
+        if (quoteLocked || swapLocked || (q.has_api_key && q.err) ||
+            (!q.err && (q.rate || q.fee || q.link))) {
           var meta = document.createElement("span");
           meta.className = "q-meta";
-          meta.textContent = q.link ? "swap on " + q.provider + "'s site"
+          meta.textContent = quoteLocked ? "API key required to fetch this quote"
+            : swapLocked ? "quote available · API key required to swap here"
+            : q.has_api_key && q.err ? "saved API key was rejected"
+            : q.link ? "swap on " + q.provider + "'s site"
             : (q.rate ? "rate " + fmt(q.rate) : "") + (q.fee ? "  fee " + q.fee : "");
           nameWrap.appendChild(meta);
         }
         row.appendChild(nameWrap);
 
-        if (q.err) {
+        if (showKeyAction) {
+          var actions = document.createElement("span");
+          actions.className = "q-key-actions";
+          if (!q.err && q.to_amount) {
+            var out = document.createElement("strong");
+            out.className = "q-out";
+            out.textContent = fmt(q.to_amount) + " " + toSel.value;
+            actions.appendChild(out);
+          }
+          var keyButton = document.createElement("button");
+          keyButton.type = "button";
+          keyButton.className = "q-key-btn";
+          keyButton.textContent = q.has_api_key ? "replace API key" : "add API key";
+          keyButton.addEventListener("click", function () { openKeyDialog(q.provider); });
+          actions.appendChild(keyButton);
+          if (q.link) {
+            var deepLink = document.createElement("a");
+            deepLink.className = "q-deeplink";
+            deepLink.href = q.link;
+            deepLink.target = "_blank";
+            deepLink.rel = "noopener nofollow";
+            deepLink.textContent = "open " + q.provider + " ↗";
+            actions.appendChild(deepLink);
+          }
+          row.appendChild(actions);
+        } else if (q.err) {
           var err = document.createElement("span");
           err.className = "q-err";
           err.textContent = q.link ? "check rate on site" : q.err;

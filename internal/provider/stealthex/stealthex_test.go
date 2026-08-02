@@ -285,6 +285,10 @@ func TestGatingAndSwapLink(t *testing.T) {
 	if keyless.(provider.Gated).Brokered() {
 		t.Error("expected not brokered without key")
 	}
+	policy := keyless.(provider.APIKeyPolicy)
+	if !policy.APIKeyRequiredForQuote() || !policy.APIKeyRequiredForSwap() {
+		t.Error("StealthEX requires a key for both quotes and swaps")
+	}
 	link := keyless.(provider.Linker).SwapLink(provider.QuoteRequest{From: "BTC", To: "XMR", Amount: "0.5"})
 	for _, want := range []string{"stealthex.io", "from=btc", "to=xmr", "amount=0.5", "ref=ref1"} {
 		if !strings.Contains(link, want) {
@@ -294,5 +298,19 @@ func TestGatingAndSwapLink(t *testing.T) {
 	keyed, _ := New(config.Provider{Name: "stealthex", URL: "https://api.stealthex.io", APIKey: "k"})
 	if !keyed.(provider.Gated).Brokered() {
 		t.Error("expected brokered with key")
+	}
+}
+
+func TestWithAPIKeyReturnsIsolatedClient(t *testing.T) {
+	base, _ := New(config.Provider{Name: "stealthex", URL: "https://api.stealthex.io"})
+	keyed, err := base.(provider.Credentialed).WithAPIKey(" visitor-key ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if base.(provider.Gated).Brokered() {
+		t.Fatal("base provider was mutated")
+	}
+	if !keyed.(provider.Gated).Brokered() || keyed.(*client).apiKey != "visitor-key" {
+		t.Fatalf("keyed provider = %#v", keyed)
 	}
 }

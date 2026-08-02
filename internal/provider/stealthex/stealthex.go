@@ -71,7 +71,19 @@ func New(cfg config.Provider) (provider.Provider, error) {
 
 func (c *client) Name() string { return c.name }
 
+func (c *client) WithAPIKey(apiKey string) (provider.Provider, error) {
+	clone := *c
+	clone.apiKey = strings.TrimSpace(apiKey)
+	if clone.apiKey == "" {
+		return nil, fmt.Errorf("stealthex: api key is required")
+	}
+	return &clone, nil
+}
+
 func (c *client) Brokered() bool { return c.apiKey != "" }
+
+func (c *client) APIKeyRequiredForQuote() bool { return true }
+func (c *client) APIKeyRequiredForSwap() bool  { return true }
 
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}

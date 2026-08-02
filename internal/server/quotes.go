@@ -13,12 +13,15 @@ import (
 )
 
 type quoteJSON struct {
-	Provider string `json:"provider"`
-	Rate     string `json:"rate,omitempty"`
-	Fee      string `json:"fee,omitempty"`
-	ToAmount string `json:"to_amount,omitempty"`
-	Link     string `json:"link,omitempty"`
-	Err      string `json:"err,omitempty"`
+	Provider         string `json:"provider"`
+	Rate             string `json:"rate,omitempty"`
+	Fee              string `json:"fee,omitempty"`
+	ToAmount         string `json:"to_amount,omitempty"`
+	Link             string `json:"link,omitempty"`
+	Err              string `json:"err,omitempty"`
+	QuoteNeedsAPIKey bool   `json:"quote_requires_api_key,omitempty"`
+	SwapNeedsAPIKey  bool   `json:"swap_requires_api_key,omitempty"`
+	HasAPIKey        bool   `json:"has_api_key,omitempty"`
 }
 
 func swapLink(p provider.Provider, req provider.QuoteRequest) string {
@@ -92,17 +95,35 @@ func (s *Server) handleQuotes(w http.ResponseWriter, r *http.Request) {
 
 	quotes := make([]quoteJSON, len(s.providers))
 	var wg sync.WaitGroup
-	for i, p := range s.providers {
+	for i, base := range s.providers {
 		wg.Go(func() {
+			p, hasUserKey := s.providerForRequest(r, base)
+			quoteNeedsKey, swapNeedsKey := apiKeyRequirements(base)
+			quoteNeedsKey = quoteNeedsKey && !hasUserKey
+			swapNeedsKey = swapNeedsKey && !hasUserKey
+			if quoteNeedsKey {
+				quotes[i] = quoteJSON{
+					Provider:         base.Name(),
+					Err:              "api key required for quote",
+					Link:             swapLink(base, req),
+					QuoteNeedsAPIKey: true,
+					SwapNeedsAPIKey:  swapNeedsKey,
+				}
+				return
+			}
 			ctx, cancel := context.WithTimeout(r.Context(), providerTimeout)
 			defer cancel()
 			q, err := p.Quote(ctx, req)
 			if err != nil {
-				quotes[i] = quoteJSON{Provider: p.Name(), Err: "provider unavailable", Link: swapLink(p, req)}
+				quotes[i] = quoteJSON{Provider: p.Name(), Err: "provider unavailable", Link: swapLink(base, req), SwapNeedsAPIKey: swapNeedsKey, HasAPIKey: hasUserKey}
 				return
 			}
+			link := ""
+			if swapNeedsKey {
+				link = swapLink(base, req)
+			}
 			quotes[i] = quoteJSON{Provider: p.Name(), Rate: q.Pair.Rate, Fee: q.Pair.Fee,
-				ToAmount: q.ToAmount, Err: q.Err, Link: swapLink(p, req)}
+				ToAmount: q.ToAmount, Err: q.Err, Link: link, SwapNeedsAPIKey: swapNeedsKey, HasAPIKey: hasUserKey}
 		})
 	}
 	wg.Wait()

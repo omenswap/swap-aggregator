@@ -94,9 +94,10 @@ func TestQuotesLinkWhenNotBrokered(t *testing.T) {
 	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/quotes?from=ETH&to=USDC&amount=1", nil))
 	var resp struct {
 		Quotes []struct {
-			Provider string `json:"provider"`
-			ToAmount string `json:"to_amount"`
-			Link     string `json:"link"`
+			Provider        string `json:"provider"`
+			ToAmount        string `json:"to_amount"`
+			Link            string `json:"link"`
+			SwapNeedsAPIKey bool   `json:"swap_requires_api_key"`
 		} `json:"quotes"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
@@ -104,6 +105,49 @@ func TestQuotesLinkWhenNotBrokered(t *testing.T) {
 	}
 	if resp.Quotes[0].Link != "https://example.com/swap?from=ETH" {
 		t.Errorf("link = %q", resp.Quotes[0].Link)
+	}
+	if !resp.Quotes[0].SwapNeedsAPIKey || resp.Quotes[0].ToAmount != "2950" {
+		t.Errorf("expected public quote with keyed swap: %+v", resp.Quotes[0])
+	}
+}
+
+type quoteGatedFake struct {
+	gatedFake
+	quoteCalled atomic.Bool
+}
+
+func (g *quoteGatedFake) APIKeyRequiredForQuote() bool { return true }
+func (g *quoteGatedFake) APIKeyRequiredForSwap() bool  { return true }
+func (g *quoteGatedFake) Quote(context.Context, provider.QuoteRequest) (provider.Quote, error) {
+	g.quoteCalled.Store(true)
+	return provider.Quote{}, errors.New("should not be called without a key")
+}
+
+func TestQuotesKeyAndLinkWhenQuoteIsGated(t *testing.T) {
+	g := &quoteGatedFake{gatedFake: gatedFake{
+		fakeProvider: fakeProvider{name: "gated", pairs: []provider.Pair{ethPair}},
+		brokered:     false,
+		link:         "https://example.com/swap",
+	}}
+	s := New([]provider.Provider{g}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/quotes?from=ETH&to=USDC&amount=1", nil))
+	if g.quoteCalled.Load() {
+		t.Fatal("quote endpoint was called even though it requires an API key")
+	}
+	var resp struct {
+		Quotes []struct {
+			Link             string `json:"link"`
+			QuoteNeedsAPIKey bool   `json:"quote_requires_api_key"`
+			SwapNeedsAPIKey  bool   `json:"swap_requires_api_key"`
+		} `json:"quotes"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	q := resp.Quotes[0]
+	if !q.QuoteNeedsAPIKey || !q.SwapNeedsAPIKey || q.Link != "https://example.com/swap?from=ETH" {
+		t.Fatalf("gated quote = %+v", q)
 	}
 }
 

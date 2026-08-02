@@ -54,6 +54,22 @@ type Gated interface {
 	Brokered() bool
 }
 
+// Credentialed is implemented by providers that can create a request-scoped
+// client from an end user's API credential. Implementations must return a new
+// provider and leave the configured provider unchanged: multiple visitors may
+// use different credentials concurrently.
+type Credentialed interface {
+	WithAPIKey(apiKey string) (Provider, error)
+}
+
+// APIKeyPolicy describes which public operations a provider gates. Keeping
+// quote and swap creation separate lets the aggregator show public quotes even
+// when creating the swap through the API still requires the visitor's key.
+type APIKeyPolicy interface {
+	APIKeyRequiredForQuote() bool
+	APIKeyRequiredForSwap() bool
+}
+
 type Linker interface {
 	SwapLink(req QuoteRequest) string
 }

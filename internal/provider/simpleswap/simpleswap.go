@@ -62,6 +62,9 @@ type client struct {
 
 func (c *client) Brokered() bool { return c.apiKey != "" }
 
+func (c *client) APIKeyRequiredForQuote() bool { return true }
+func (c *client) APIKeyRequiredForSwap() bool  { return true }
+
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}
 	if f, ok := currencies[req.From]; ok {
@@ -90,6 +93,15 @@ func New(cfg config.Provider) (provider.Provider, error) {
 }
 
 func (c *client) Name() string { return c.name }
+
+func (c *client) WithAPIKey(apiKey string) (provider.Provider, error) {
+	clone := *c
+	clone.apiKey = strings.TrimSpace(apiKey)
+	if clone.apiKey == "" {
+		return nil, fmt.Errorf("simpleswap: api key is required")
+	}
+	return &clone, nil
+}
 
 func (c *client) Pairs(ctx context.Context) ([]provider.Pair, error) {
 	var pairs []provider.Pair

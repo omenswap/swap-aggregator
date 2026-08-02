@@ -60,6 +60,9 @@ func New(cfg config.Provider) (provider.Provider, error) {
 
 func (c *client) Brokered() bool { return c.key != "" && c.secret != "" }
 
+func (c *client) APIKeyRequiredForQuote() bool { return true }
+func (c *client) APIKeyRequiredForSwap() bool  { return true }
+
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}
 	if f, ok := currencyCodes[req.From]; ok {
@@ -78,6 +81,17 @@ func (c *client) SwapLink(req provider.QuoteRequest) string {
 }
 
 func (c *client) Name() string { return c.name }
+
+func (c *client) WithAPIKey(apiKey string) (provider.Provider, error) {
+	key, secret, ok := strings.Cut(strings.TrimSpace(apiKey), ":")
+	if !ok || key == "" || secret == "" {
+		return nil, fmt.Errorf("fixedfloat: enter the credential as key:secret")
+	}
+	clone := *c
+	clone.key = key
+	clone.secret = secret
+	return &clone, nil
+}
 
 func (c *client) Pairs(ctx context.Context) ([]provider.Pair, error) {
 	symbols := make([]string, 0, len(currencyCodes))

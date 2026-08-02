@@ -38,5 +38,26 @@
     <div id="quotes" class="quotes"></div>
   </aside>
 </main>
+<dialog class="key-dialog" id="api-key-dialog" aria-labelledby="api-key-title">
+  <form class="key-form" id="api-key-form">
+    <div class="key-dialog-head">
+      <div>
+        <span class="leg-label">connect provider</span>
+        <h2 id="api-key-title">Add <span id="api-key-provider"></span> API key</h2>
+      </div>
+      <button class="key-close" id="api-key-close" type="button" aria-label="close">&times;</button>
+    </div>
+    <label class="field">
+      <span class="leg-label">API credential</span>
+      <input class="addr-input key-input" id="api-key-input" name="api_key" type="password" autocomplete="off" spellcheck="false" required>
+    </label>
+    <p class="key-note">The key is encrypted in an HttpOnly cookie for this browser session. Page scripts cannot read it, and it is never added to a URL, localStorage, logs, or the server config.</p>
+    <div class="key-error" id="api-key-error" role="alert" hidden></div>
+    <div class="key-actions">
+      <button class="key-cancel" id="api-key-cancel" type="button">cancel</button>
+      <button class="key-save" type="submit">add API key</button>
+    </div>
+  </form>
+</dialog>
 <script id="pair-data" type="application/json">{{.PairData}}</script>
 {{template "footer" .}}

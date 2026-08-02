@@ -25,11 +25,12 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "provider, from, to, amount and destination_address are required", http.StatusBadRequest)
 		return
 	}
-	p, ok := s.byName[name]
+	base, ok := s.byName[name]
 	if !ok {
 		http.Error(w, "unknown provider", http.StatusBadRequest)
 		return
 	}
+	p, _ := s.providerForRequest(r, base)
 	if g, ok := p.(provider.Gated); ok && !g.Brokered() {
 		http.Error(w, "provider requires an api key for swaps through this site", http.StatusBadRequest)
 		return

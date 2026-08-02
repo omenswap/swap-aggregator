@@ -45,10 +45,11 @@ func toSwapJSON(s provider.Swap) swapJSON {
 func (s *Server) fetchSwap(r *http.Request) (provider.Swap, string, int) {
 	name := r.PathValue("provider")
 	id := r.PathValue("id")
-	p, ok := s.byName[name]
+	base, ok := s.byName[name]
 	if !ok {
 		return provider.Swap{}, "unknown provider", http.StatusNotFound
 	}
+	p, _ := s.providerForRequest(r, base)
 	ctx, cancel := context.WithTimeout(r.Context(), providerTimeout)
 	defer cancel()
 	swap, err := p.Status(ctx, id)

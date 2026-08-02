@@ -281,6 +281,10 @@ func TestGatingAndSwapLink(t *testing.T) {
 	if keyless.(provider.Gated).Brokered() {
 		t.Error("expected not brokered without key")
 	}
+	policy := keyless.(provider.APIKeyPolicy)
+	if !policy.APIKeyRequiredForQuote() || !policy.APIKeyRequiredForSwap() {
+		t.Error("FixedFloat requires a key and secret for both quotes and swaps")
+	}
 	keyOnly, _ := New(config.Provider{Name: "fixedfloat", URL: "https://ff.io", APIKey: "k"})
 	if keyOnly.(provider.Gated).Brokered() {
 		t.Error("expected not brokered without secret")
@@ -294,5 +298,23 @@ func TestGatingAndSwapLink(t *testing.T) {
 	keyed, _ := New(config.Provider{Name: "fixedfloat", URL: "https://ff.io", APIKey: "k:s"})
 	if !keyed.(provider.Gated).Brokered() {
 		t.Error("expected brokered with key and secret")
+	}
+}
+
+func TestWithAPIKeyValidatesAndReturnsIsolatedClient(t *testing.T) {
+	base, _ := New(config.Provider{Name: "fixedfloat", URL: "https://ff.io"})
+	if _, err := base.(provider.Credentialed).WithAPIKey("key-without-secret"); err == nil {
+		t.Fatal("expected key:secret validation error")
+	}
+	keyed, err := base.(provider.Credentialed).WithAPIKey(" visitor-key:visitor-secret ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if base.(provider.Gated).Brokered() {
+		t.Fatal("base provider was mutated")
+	}
+	c := keyed.(*client)
+	if !c.Brokered() || c.key != "visitor-key" || c.secret != "visitor-secret" {
+		t.Fatalf("keyed provider = %#v", keyed)
 	}
 }

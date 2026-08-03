@@ -28,18 +28,17 @@ type coin struct {
 	network string
 }
 
-// Network names are the documented shape but unverified: listing them needs a
-// key, and the docs give no enumeration.
+// Codes and networks are uppercase, read from get-all-coins. The rate endpoint
+// tolerates lowercase but creating a transaction does not.
 var coins = map[string]coin{
-	"BTC":      {"btc", "btc"},
-	"DOGE":     {"doge", "doge"},
-	"ETH":      {"eth", "eth"},
-	"LTC":      {"ltc", "ltc"},
-	"SOL":      {"sol", "sol"},
-	"USDC":     {"usdc", "eth"},
-	"USDT":     {"usdt", "eth"},
-	"USDT_TRX": {"usdt", "trx"},
-	"XMR":      {"xmr", "xmr"},
+	"BTC":      {"BTC", "BTC"},
+	"ETH":      {"ETH", "ETH"},
+	"LTC":      {"LTC", "LTC"},
+	"SOL":      {"SOL", "SOL"},
+	"USDC":     {"USDC", "ETH"},
+	"USDT":     {"USDT", "ETH"},
+	"USDT_TRX": {"USDT", "TRX"},
+	"XMR":      {"XMR", "XMR"},
 }
 
 var statusMap = map[int]string{
@@ -208,21 +207,27 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 }
 
 type apiSide struct {
-	Address string      `json:"address"`
-	Amount  json.Number `json:"amount"`
-	TxID    string      `json:"txId"`
-	Coin    string      `json:"coin"`
+	Coin struct {
+		Name    string      `json:"name"`
+		Value   json.Number `json:"value"`
+		Network string      `json:"network"`
+	} `json:"coin"`
+	Address string `json:"address"`
 }
 
 type apiTransaction struct {
 	OrderNumber string `json:"orderNumber"`
 	Status      int    `json:"status"`
+	TxID        string `json:"txId"`
 	CreatedAt   string `json:"createdAt"`
 	ExpiredAt   string `json:"expiredAt"`
 	Pairs       struct {
 		Deposit apiSide `json:"deposit"`
 		Receive apiSide `json:"receive"`
 	} `json:"pairs"`
+	ReceiveTransaction struct {
+		TxID string `json:"txId"`
+	} `json:"receiveTransaction"`
 }
 
 func (t apiTransaction) toSwap(from, to string) provider.Swap {
@@ -231,12 +236,12 @@ func (t apiTransaction) toSwap(from, to string) provider.Swap {
 		Status:             mapStatus(t.Status),
 		From:               from,
 		To:                 to,
-		FromAmount:         t.Pairs.Deposit.Amount.String(),
-		ToAmountEstimated:  t.Pairs.Receive.Amount.String(),
+		FromAmount:         t.Pairs.Deposit.Coin.Value.String(),
+		ToAmountEstimated:  t.Pairs.Receive.Coin.Value.String(),
 		DepositAddress:     t.Pairs.Deposit.Address,
 		DestinationAddress: t.Pairs.Receive.Address,
-		DepositTxHash:      t.Pairs.Deposit.TxID,
-		PayoutTxHash:       t.Pairs.Receive.TxID,
+		DepositTxHash:      t.TxID,
+		PayoutTxHash:       t.ReceiveTransaction.TxID,
 		ExpiresAt:          t.ExpiredAt,
 		CreatedAt:          t.CreatedAt,
 	}
@@ -285,12 +290,12 @@ func (c *client) Status(ctx context.Context, id string) (provider.Swap, error) {
 	if err := c.get(ctx, "get-transaction", "/api/private/get-transaction?id="+url.QueryEscape(id), &t); err != nil {
 		return provider.Swap{}, err
 	}
-	return t.toSwap(canonical(t.Pairs.Deposit.Coin), canonical(t.Pairs.Receive.Coin)), nil
+	return t.toSwap(canonical(t.Pairs.Deposit.Coin.Name), canonical(t.Pairs.Receive.Coin.Name)), nil
 }
 
 func canonical(code string) string {
 	for sym, c := range coins {
-		if c.code == strings.ToLower(code) {
+		if c.code == strings.ToUpper(code) {
 			return sym
 		}
 	}

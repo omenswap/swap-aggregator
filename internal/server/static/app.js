@@ -283,20 +283,54 @@
       quotesPanel.hidden = quotesBox.children.length === 0;
     }
 
+    // Only the newest fetch may paint; a slow earlier one must not overwrite it.
+    var inflight = 0;
+
+    function showLoading() {
+      quotesBox.innerHTML = "";
+      for (var i = 0; i < 4; i++) {
+        var row = document.createElement("div");
+        row.className = "quote-row skeleton";
+        var mark = document.createElement("span");
+        var name = document.createElement("span");
+        name.className = "sk-bar sk-name";
+        var out = document.createElement("span");
+        out.className = "sk-bar sk-out";
+        row.appendChild(mark);
+        row.appendChild(name);
+        row.appendChild(out);
+        quotesBox.appendChild(row);
+      }
+      quotesPanel.hidden = false;
+      quotesPanel.classList.add("loading");
+      est.textContent = "…";
+    }
+
     function refresh() {
       var from = fromSel.value, to = toSel.value, amount = amountInput.value.trim();
       if (!from || !to || !amount || from === to) {
         quotesPanel.hidden = true;
+        quotesPanel.classList.remove("loading");
         est.textContent = "—";
         return;
       }
+      var request = ++inflight;
+      showLoading();
       fetch("/api/quotes?from=" + encodeURIComponent(from) +
             "&to=" + encodeURIComponent(to) +
             "&amount=" + encodeURIComponent(amount) +
             "&rate=" + (isFixed() ? "fixed" : "floating"))
         .then(function (r) { return r.json(); })
-        .then(function (data) { renderQuotes(data.quotes || []); })
-        .catch(function () { quotesPanel.hidden = true; });
+        .then(function (data) {
+          if (request !== inflight) return;
+          quotesPanel.classList.remove("loading");
+          renderQuotes(data.quotes || []);
+        })
+        .catch(function () {
+          if (request !== inflight) return;
+          quotesPanel.classList.remove("loading");
+          quotesPanel.hidden = true;
+        });
     }
 
     function schedule() {

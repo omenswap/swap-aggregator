@@ -196,6 +196,23 @@ button:focus-visible, a:focus-visible {
 
 .quotes { display: flex; flex-direction: column; }
 
+.quote-row.skeleton { cursor: default; }
+.sk-bar {
+  height: 0.72rem;
+  background: var(--line);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+.sk-name { width: 45%; }
+.sk-out { width: 4.5rem; justify-self: end; }
+.quote-row.skeleton:nth-child(2) .sk-bar { animation-delay: 0.12s; }
+.quote-row.skeleton:nth-child(3) .sk-bar { animation-delay: 0.24s; }
+.quote-row.skeleton:nth-child(4) .sk-bar { animation-delay: 0.36s; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.7; }
+}
+
 .quote-row {
   position: relative;
   display: grid;
@@ -524,6 +541,7 @@ dd { margin: 0; word-break: break-all; }
 @media (prefers-reduced-motion: reduce) {
   .ticket.loading::before { animation: none; clip-path: none; }
   .dots i { animation: none; opacity: 1; }
+  .sk-bar { animation: none; opacity: 0.4; }
 }
 
 @media (max-width: 900px) {

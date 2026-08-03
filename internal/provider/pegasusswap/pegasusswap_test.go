@@ -57,7 +57,7 @@ func TestQuoteSignsWithEndpointName(t *testing.T) {
 	if pub != "pub123" || payload != "exchange-coin" || sig != wantSignature("exchange-coin") {
 		t.Errorf("auth headers: key=%q payload=%q sig=%q", pub, payload, sig)
 	}
-	for _, want := range []string{"coinFrom=btc", "coinTo=xmr", "lastSource=deposit", "typeSwap=2"} {
+	for _, want := range []string{"coinFrom=BTC", "coinTo=XMR", "lastSource=deposit", "typeSwap=2"} {
 		if !strings.Contains(query, want) {
 			t.Errorf("query %q missing %q", query, want)
 		}
@@ -107,8 +107,8 @@ func TestCreateSwapAndStatus(t *testing.T) {
 	var body map[string]any
 	const txJSON = `{"orderNumber":"RTGTLN","status":9,"createdAt":"2026-08-03T10:00:00Z",
 		"expiredAt":"2026-08-03T11:00:00Z","pairs":{
-		"deposit":{"address":"bc1qdeposit","amount":"0.5","coin":"btc"},
-		"receive":{"address":"4xmrdest","amount":"85.5","coin":"xmr"}}}`
+		"deposit":{"address":"bc1qdeposit","coin":{"name":"BTC","value":0.5,"network":"BTC"}},
+		"receive":{"address":"4xmrdest","coin":{"name":"XMR","value":85.5,"network":"XMR"}}}}`
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/private/create-transaction", func(w http.ResponseWriter, r *http.Request) {
 		if p := r.Header.Get("x-api-payload"); p != "create-transaction" {

@@ -23,6 +23,8 @@
     var keyProvider = document.getElementById("api-key-provider");
     var keyError = document.getElementById("api-key-error");
     var activeKeyProvider = "";
+    var rateInputs = form.querySelectorAll("input[name=rate]");
+    var labelRecv = document.getElementById("label-recv");
     var timer = null;
     var pairData = [];
     var pd = document.getElementById("pair-data");
@@ -58,6 +60,19 @@
       } else if (valid.indexOf(cur) !== -1) {
         toSel.value = cur;
       }
+    }
+
+    function isFixed() {
+      for (var i = 0; i < rateInputs.length; i++) {
+        if (rateInputs[i].checked) return rateInputs[i].value === "fixed";
+      }
+      return false;
+    }
+
+    function applyRateMode() {
+      var fixed = isFixed();
+      labelRecv.textContent = fixed ? "you receive (locked)" : "you receive (best estimate)";
+      form.classList.toggle("fixed", fixed);
     }
 
     function fmt(s) {
@@ -133,11 +148,14 @@
 
     function renderQuotes(quotes) {
       quotesBox.innerHTML = "";
+      var amountOf = function (q) { return q.to_amount; };
+      var unit = function () { return toSel.value; };
       var selectable = quotes.filter(function (q) {
-        return !q.err && !q.quote_requires_api_key && !q.swap_requires_api_key && !q.link;
+        return !q.err && !q.quote_requires_api_key && !q.swap_requires_api_key &&
+          !q.link && !q.no_fixed_rate;
       });
       var bestQuote = selectable[0] || null;
-      var best = bestQuote ? bestQuote.to_amount : null;
+      var best = bestQuote ? amountOf(bestQuote) : null;
       est.textContent = best ? fmt(best) : "—";
       var target = bestQuote ? bestQuote.provider : "";
       if (preferredProvider && selectable.some(function (q) { return q.provider === preferredProvider; })) {
@@ -149,8 +167,13 @@
         var row;
         var quoteLocked = !!q.quote_requires_api_key;
         var swapLocked = !!q.swap_requires_api_key;
-        var showKeyAction = quoteLocked || swapLocked || (q.has_api_key && q.err);
-        if (showKeyAction) {
+        var noFixed = !!q.no_fixed_rate;
+        var showKeyAction = !noFixed && (quoteLocked || swapLocked || (q.has_api_key && q.err));
+        if (noFixed) {
+          row = document.createElement("div");
+          row.className = "quote-row err";
+          row.appendChild(document.createElement("span"));
+        } else if (showKeyAction) {
           row = document.createElement("div");
           row.className = "quote-row gated" + (q.err ? " err" : "");
           var mark = document.createElement("span");
@@ -202,15 +225,18 @@
           name.appendChild(tag);
         }
         nameWrap.appendChild(name);
-        if (quoteLocked || swapLocked || (q.has_api_key && q.err) ||
+        if (noFixed || quoteLocked || swapLocked || (q.has_api_key && q.err) ||
             (!q.err && (q.rate || q.fee || q.link))) {
           var meta = document.createElement("span");
           meta.className = "q-meta";
-          meta.textContent = quoteLocked ? "API key required to fetch this quote"
+          meta.textContent = noFixed ? "floating rate only"
+            : quoteLocked ? "API key required to fetch this quote"
             : swapLocked ? "quote available · API key required to swap here"
             : q.has_api_key && q.err ? "saved API key was rejected"
             : q.link ? "swap on " + q.provider + "'s site"
-            : (q.rate ? "rate " + fmt(q.rate) : "") + (q.fee ? "  fee " + q.fee : "");
+            : q.from_amount && q.from_amount !== amountInput.value.trim()
+              ? "send exactly " + fmt(q.from_amount) + " " + fromSel.value
+              : (q.rate ? "rate " + fmt(q.rate) : "") + (q.fee ? "  fee " + q.fee : "");
           nameWrap.appendChild(meta);
         }
         row.appendChild(nameWrap);
@@ -218,10 +244,10 @@
         if (showKeyAction) {
           var actions = document.createElement("span");
           actions.className = "q-key-actions";
-          if (!q.err && q.to_amount) {
+          if (!q.err && amountOf(q)) {
             var out = document.createElement("strong");
             out.className = "q-out";
-            out.textContent = fmt(q.to_amount) + " " + toSel.value;
+            out.textContent = fmt(amountOf(q)) + " " + unit();
             actions.appendChild(out);
           }
           var keyButton = document.createElement("button");
@@ -248,7 +274,7 @@
         } else {
           var out = document.createElement("strong");
           out.className = "q-out";
-          out.textContent = fmt(q.to_amount) + " " + toSel.value;
+          out.textContent = fmt(amountOf(q)) + " " + unit();
           row.appendChild(out);
         }
         quotesBox.appendChild(row);
@@ -265,7 +291,8 @@
       }
       fetch("/api/quotes?from=" + encodeURIComponent(from) +
             "&to=" + encodeURIComponent(to) +
-            "&amount=" + encodeURIComponent(amount))
+            "&amount=" + encodeURIComponent(amount) +
+            "&rate=" + (isFixed() ? "fixed" : "floating"))
         .then(function (r) { return r.json(); })
         .then(function (data) { renderQuotes(data.quotes || []); })
         .catch(function () { quotesPanel.hidden = true; });
@@ -311,6 +338,13 @@
 
     toSel.addEventListener("change", schedule);
     amountInput.addEventListener("input", schedule);
+    Array.prototype.forEach.call(rateInputs, function (input) {
+      input.addEventListener("change", function () {
+        applyRateMode();
+        schedule();
+      });
+    });
+    applyRateMode();
     updateToOptions(toSel.value);
     if (amountInput.value.trim()) refresh();
   }

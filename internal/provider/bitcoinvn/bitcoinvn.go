@@ -78,7 +78,7 @@ func New(cfg config.Provider) (provider.Provider, error) {
 		baseURL:   strings.TrimRight(cfg.URL, "/"),
 		apiKey:    cfg.APIKey,
 		affiliate: cfg.AffiliateCode,
-		http:      &http.Client{Timeout: 10 * time.Second},
+		http:      provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -178,6 +178,8 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 			q.Err = "pair currently unavailable"
 			return q, nil
 		}
+		q.FromAmount = req.Amount
+		q.RateType = provider.Floating
 		q.ToAmount = trimZeros(toAmount.FloatString(12))
 		q.Pair.Rate = trimZeros(new(big.Rat).Quo(toAmount, amount).FloatString(12))
 		return q, nil

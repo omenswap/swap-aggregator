@@ -14,10 +14,13 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := r.PostFormValue("provider")
+	rateType, direction := rateMode(r.PostFormValue("rate"))
 	req := provider.SwapRequest{
 		From:               r.PostFormValue("from"),
 		To:                 r.PostFormValue("to"),
 		Amount:             r.PostFormValue("amount"),
+		Direction:          direction,
+		RateType:           rateType,
 		DestinationAddress: r.PostFormValue("destination_address"),
 		RefundAddress:      r.PostFormValue("refund_address"),
 	}
@@ -28,6 +31,10 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 	base, ok := s.byName[name]
 	if !ok {
 		http.Error(w, "unknown provider", http.StatusBadRequest)
+		return
+	}
+	if !provider.SupportsRateMode(base, rateType, direction) {
+		http.Error(w, "provider does not offer a fixed rate", http.StatusBadRequest)
 		return
 	}
 	p, _ := s.providerForRequest(r, base)
@@ -47,6 +54,7 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 			"to":                  {req.To},
 			"amount":              {req.Amount},
 			"destination_address": {req.DestinationAddress},
+			"rate":                {string(rateType)},
 		}
 		if req.RefundAddress != "" {
 			q.Set("refund_address", req.RefundAddress)

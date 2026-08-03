@@ -157,3 +157,66 @@ func TestIndexPrefillIsEscaped(t *testing.T) {
 		t.Errorf("unescaped prefill:\n%s", rec.Body.String())
 	}
 }
+
+func TestCreateSwapPassesRateMode(t *testing.T) {
+	var got provider.SwapRequest
+	f := &ratedFake{
+		fakeProvider: fakeProvider{name: "one", pairs: []provider.Pair{ethPair},
+			create: func(r provider.SwapRequest) (provider.Swap, error) {
+				got = r
+				return provider.Swap{ID: "abc", Status: "pending"}, nil
+			}},
+		modes: map[string]bool{"fixed/from": true, "floating/from": true},
+	}
+	s := New([]provider.Provider{f}, time.Minute)
+	form := validForm()
+	form.Set("rate", "fixed")
+	if rec := postSwap(s, form); rec.Code != http.StatusSeeOther {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	if got.RateType != provider.Fixed || got.Direction != provider.FromSide {
+		t.Errorf("swap request = %+v", got)
+	}
+}
+
+func TestCreateSwapRejectsUnsupportedRateMode(t *testing.T) {
+	f := &fakeProvider{name: "one", pairs: []provider.Pair{ethPair},
+		create: func(provider.SwapRequest) (provider.Swap, error) {
+			t.Error("must not reach the provider")
+			return provider.Swap{}, nil
+		}}
+	s := New([]provider.Provider{f}, time.Minute)
+	form := validForm()
+	form.Set("rate", "fixed")
+	rec := postSwap(s, form)
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "fixed") {
+		t.Errorf("status %d body %q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCreateSwapErrorKeepsRateMode(t *testing.T) {
+	f := &ratedFake{
+		fakeProvider: fakeProvider{name: "one", pairs: []provider.Pair{ethPair},
+			create: func(provider.SwapRequest) (provider.Swap, error) {
+				return provider.Swap{}, errors.New("nope")
+			}},
+		modes: map[string]bool{"fixed/from": true},
+	}
+	s := New([]provider.Provider{f}, time.Minute)
+	form := validForm()
+	form.Set("rate", "fixed")
+	rec := postSwap(s, form)
+	loc, _ := url.Parse(rec.Header().Get("Location"))
+	if loc.Query().Get("rate") != "fixed" {
+		t.Errorf("Location = %q", rec.Header().Get("Location"))
+	}
+}
+
+func TestIndexPrefillsRateMode(t *testing.T) {
+	s := New([]provider.Provider{&fakeProvider{name: "one", pairs: []provider.Pair{ethPair}}}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/?rate=fixed", nil))
+	if !strings.Contains(rec.Body.String(), `value="fixed" checked`) {
+		t.Errorf("fixed not preselected:\n%s", rec.Body.String())
+	}
+}

@@ -16,12 +16,24 @@ type quoteJSON struct {
 	Provider         string `json:"provider"`
 	Rate             string `json:"rate,omitempty"`
 	Fee              string `json:"fee,omitempty"`
+	FromAmount       string `json:"from_amount,omitempty"`
 	ToAmount         string `json:"to_amount,omitempty"`
+	RateType         string `json:"rate_type,omitempty"`
 	Link             string `json:"link,omitempty"`
 	Err              string `json:"err,omitempty"`
 	QuoteNeedsAPIKey bool   `json:"quote_requires_api_key,omitempty"`
 	SwapNeedsAPIKey  bool   `json:"swap_requires_api_key,omitempty"`
 	HasAPIKey        bool   `json:"has_api_key,omitempty"`
+	NoFixedRate      bool   `json:"no_fixed_rate,omitempty"`
+}
+
+// Both rate types are priced from what the visitor sends. Providers whose API
+// only prices a fixed rate from the receive side solve for it themselves.
+func rateMode(q string) (provider.RateType, provider.Direction) {
+	if q == string(provider.Fixed) {
+		return provider.Fixed, provider.FromSide
+	}
+	return provider.Floating, provider.FromSide
 }
 
 func swapLink(p provider.Provider, req provider.QuoteRequest) string {
@@ -40,6 +52,8 @@ type formData struct {
 	Amount      string
 	Destination string
 	Refund      string
+	Rate        string
+	Fixed       bool
 }
 
 type indexData struct {
@@ -52,6 +66,8 @@ type indexData struct {
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
+	rateType, _ := rateMode(q.Get("rate"))
+	rate := string(rateType)
 	s.renderIndex(w, q.Get("error"), formData{
 		Provider:    q.Get("provider"),
 		From:        q.Get("from"),
@@ -59,6 +75,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		Amount:      q.Get("amount"),
 		Destination: q.Get("destination_address"),
 		Refund:      q.Get("refund_address"),
+		Rate:        rate,
+		Fixed:       rate == string(provider.Fixed),
 	})
 }
 
@@ -110,12 +128,19 @@ func (s *Server) handleQuotes(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "from, to and amount are required"})
 		return
 	}
-	req := provider.QuoteRequest{From: from, To: to, Amount: amount}
+	rateType, direction := rateMode(r.URL.Query().Get("rate"))
+	req := provider.QuoteRequest{From: from, To: to, Amount: amount,
+		Direction: direction, RateType: rateType}
 
 	quotes := make([]quoteJSON, len(s.providers))
 	var wg sync.WaitGroup
 	for i, base := range s.providers {
 		wg.Go(func() {
+			if !provider.SupportsRateMode(base, rateType, direction) {
+				quotes[i] = quoteJSON{Provider: base.Name(), Err: "no fixed rate",
+					NoFixedRate: true, Link: swapLink(base, req)}
+				return
+			}
 			p, hasUserKey := s.providerForRequest(r, base)
 			quoteNeedsKey, swapNeedsKey := apiKeyRequirements(base)
 			quoteNeedsKey = quoteNeedsKey && !hasUserKey
@@ -142,7 +167,8 @@ func (s *Server) handleQuotes(w http.ResponseWriter, r *http.Request) {
 				link = swapLink(base, req)
 			}
 			quotes[i] = quoteJSON{Provider: p.Name(), Rate: q.Pair.Rate, Fee: q.Pair.Fee,
-				ToAmount: q.ToAmount, Err: q.Err, Link: link, SwapNeedsAPIKey: swapNeedsKey, HasAPIKey: hasUserKey}
+				FromAmount: q.FromAmount, ToAmount: q.ToAmount, RateType: string(rateType),
+				Err: q.Err, Link: link, SwapNeedsAPIKey: swapNeedsKey, HasAPIKey: hasUserKey}
 		})
 	}
 	wg.Wait()

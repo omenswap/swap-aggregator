@@ -1,6 +1,13 @@
 package provider
 
-import "context"
+import (
+	"context"
+	"net/http"
+	"time"
+
+	"omenswap.com/swap-aggregator/internal/config"
+	"omenswap.com/swap-aggregator/internal/ratelimit"
+)
 
 type Pair struct {
 	From        string
@@ -13,25 +20,61 @@ type Pair struct {
 	Unavailable bool
 }
 
+type RateType string
+
+const (
+	Floating RateType = "floating"
+	Fixed    RateType = "fixed"
+)
+
+// Direction says which side of the trade Amount refers to: FromSide means the
+// visitor named what they will send, ToSide means they named what they want to
+// receive. Fixed-rate quotes are commonly priced from the receive side.
+type Direction string
+
+const (
+	FromSide Direction = "from"
+	ToSide   Direction = "to"
+)
+
 type QuoteRequest struct {
-	From   string
-	To     string
-	Amount string
+	From      string
+	To        string
+	Amount    string
+	Direction Direction
+	RateType  RateType
 }
 
 type Quote struct {
-	Provider string
-	Pair     Pair
-	ToAmount string
-	Err      string
+	Provider   string
+	Pair       Pair
+	FromAmount string
+	ToAmount   string
+	RateType   RateType
+	Err        string
 }
 
 type SwapRequest struct {
 	From               string
 	To                 string
 	Amount             string
+	Direction          Direction
+	RateType           RateType
 	DestinationAddress string
 	RefundAddress      string
+}
+
+// RateModes is implemented by providers that handle more than a floating quote
+// priced from the send amount, which is all a Provider is required to support.
+type RateModes interface {
+	SupportsRateMode(RateType, Direction) bool
+}
+
+func SupportsRateMode(p Provider, t RateType, d Direction) bool {
+	if m, ok := p.(RateModes); ok {
+		return m.SupportsRateMode(t, d)
+	}
+	return t == Floating && d == FromSide
 }
 
 type Swap struct {
@@ -80,4 +123,13 @@ type Provider interface {
 	Quote(ctx context.Context, req QuoteRequest) (Quote, error)
 	CreateSwap(ctx context.Context, req SwapRequest) (Swap, error)
 	Status(ctx context.Context, id string) (Swap, error)
+}
+
+// HTTPClient builds the client an adapter should use, wired to the rate limit
+// its config declares.
+func HTTPClient(cfg config.Provider, timeout time.Duration) *http.Client {
+	return &http.Client{
+		Timeout:   timeout,
+		Transport: ratelimit.NewTransport(nil, cfg.RateLimit, cfg.Burst()),
+	}
 }

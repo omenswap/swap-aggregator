@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -223,5 +224,88 @@ func TestErrorPayloadSurfaced(t *testing.T) {
 	})
 	if err == nil || !strings.Contains(err.Error(), "insufficient reserves") {
 		t.Errorf("err = %v", err)
+	}
+}
+
+// The API prices fixed rates as from = to/rate + networkFee, so a send-side
+// request has to be solved for the receive amount that lands on it.
+func fixedHandler(t *testing.T, calls *[]string) http.Handler {
+	t.Helper()
+	const rate, networkFee = 3250.50, 0.001
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/v1/pairs", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(pairsJSON))
+	})
+	mux.HandleFunc("POST /api/v1/quote", func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]string
+		json.NewDecoder(r.Body).Decode(&body)
+		if body["from_amount"] != "" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"code":"INVALID_AMOUNT","error":"from_amount must not be set for fixed rate; specify to_amount"}`))
+			return
+		}
+		*calls = append(*calls, body["to_amount"])
+		to, err := strconv.ParseFloat(body["to_amount"], 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"bad to_amount"}`))
+			return
+		}
+		from := to/rate + networkFee
+		json.NewEncoder(w).Encode(map[string]any{
+			"from_amount": strconv.FormatFloat(from, 'f', 18, 64),
+			"to_amount":   body["to_amount"],
+			"rate":        "3250.50",
+		})
+	})
+	return mux
+}
+
+func TestFixedQuoteSolvesFromSendAmount(t *testing.T) {
+	var calls []string
+	p := newTestProvider(t, fixedHandler(t, &calls), "")
+	if !provider.SupportsRateMode(p, provider.Fixed, provider.FromSide) {
+		t.Fatal("fixed rates must be quotable from the send amount")
+	}
+	q, err := p.Quote(context.Background(), provider.QuoteRequest{
+		From: "ETH", To: "USDC", Amount: "1.5",
+		Direction: provider.FromSide, RateType: provider.Fixed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if q.Err != "" {
+		t.Fatalf("quote error: %s", q.Err)
+	}
+	from, err := strconv.ParseFloat(q.FromAmount, 64)
+	if err != nil {
+		t.Fatalf("from amount %q: %v", q.FromAmount, err)
+	}
+	if from > 1.5 {
+		t.Errorf("deposit %v exceeds the requested 1.5", from)
+	}
+	if from < 1.4985 {
+		t.Errorf("deposit %v is not close enough to the requested 1.5", from)
+	}
+	if q.RateType != provider.Fixed || q.Pair.Fee != "1.0%" {
+		t.Errorf("quote = %+v", q)
+	}
+	if len(calls) > 3 {
+		t.Errorf("solved in %d calls: %v", len(calls), calls)
+	}
+}
+
+func TestFixedQuoteRejectsUnavailablePair(t *testing.T) {
+	var calls []string
+	p := newTestProvider(t, fixedHandler(t, &calls), "")
+	q, _ := p.Quote(context.Background(), provider.QuoteRequest{
+		From: "ETH", To: "XMR", Amount: "1",
+		Direction: provider.FromSide, RateType: provider.Fixed,
+	})
+	if q.Err == "" {
+		t.Error("expected an error for an unavailable pair")
+	}
+	if len(calls) != 0 {
+		t.Errorf("called the API for an unavailable pair: %v", calls)
 	}
 }

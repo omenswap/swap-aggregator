@@ -186,3 +186,48 @@ func TestThemeRejectsInvalidFontAndScheme(t *testing.T) {
 		t.Error("expected color_scheme error")
 	}
 }
+
+func TestRateLimitDefaults(t *testing.T) {
+	c, err := Load(writeTemp(t, themeProvider))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.Providers[0].RateLimit; got != 0 {
+		t.Errorf("RateLimit = %v, want unlimited", got)
+	}
+	if got := c.Providers[0].Burst(); got != 1 {
+		t.Errorf("Burst = %v", got)
+	}
+}
+
+func TestRateLimitParsed(t *testing.T) {
+	c, err := Load(writeTemp(t, `
+[[providers]]
+name = "one"
+type = "omenswap"
+url = "http://localhost:8080"
+enabled = true
+rate_limit = 2.5
+rate_burst = 4
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Providers[0].RateLimit != 2.5 || c.Providers[0].Burst() != 4 {
+		t.Errorf("provider = %+v", c.Providers[0])
+	}
+}
+
+func TestRateLimitRejectsNegative(t *testing.T) {
+	_, err := Load(writeTemp(t, `
+[[providers]]
+name = "one"
+type = "omenswap"
+url = "http://localhost:8080"
+enabled = true
+rate_limit = -1
+`))
+	if err == nil {
+		t.Error("expected an error for a negative rate limit")
+	}
+}

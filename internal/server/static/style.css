@@ -103,6 +103,28 @@ main {
 
 .leg-row { display: flex; gap: 0.75rem; align-items: center; }
 
+.rate-toggle { display: flex; border: 1px solid var(--line); }
+.rate-opt { flex: 1; cursor: pointer; }
+.rate-opt input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.rate-opt span {
+  display: block;
+  padding: 0.45rem;
+  text-align: center;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.rate-opt:hover span { color: var(--ink); }
+.rate-opt:has(input:checked) span { background: var(--ink); color: var(--bg); }
+.rate-opt:has(input:focus-visible) span { outline: 1px solid var(--ink); outline-offset: -3px; }
+
 input, select, button {
   background: transparent;
   border: none;

@@ -2,6 +2,16 @@
 <main>
   <form method="post" action="/swap" id="swap-form" class="ticket">
     {{if .Error}}<div class="error">{{.Error}}</div>{{end}}
+    <div class="rate-toggle" role="radiogroup" aria-label="rate type">
+      <label class="rate-opt">
+        <input type="radio" name="rate" value="floating"{{if not .Form.Fixed}} checked{{end}}>
+        <span>floating</span>
+      </label>
+      <label class="rate-opt">
+        <input type="radio" name="rate" value="fixed"{{if .Form.Fixed}} checked{{end}}>
+        <span>fixed</span>
+      </label>
+    </div>
     <div class="pane">
       <span class="leg-label">you send</span>
       <div class="leg-row">
@@ -15,7 +25,7 @@
       <button type="button" class="flip" id="flip" aria-label="swap direction">&darr;&uarr;</button>
     </div>
     <div class="pane">
-      <span class="leg-label">you receive <span class="muted">(best estimate)</span></span>
+      <span class="leg-label" id="label-recv">you receive <span class="muted">(best estimate)</span></span>
       <div class="leg-row">
         <output class="amount est" id="est" aria-live="polite">&mdash;</output>
         <select class="token" name="to" id="to" aria-label="token to receive">

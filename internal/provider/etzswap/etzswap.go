@@ -63,6 +63,16 @@ type client struct {
 
 func (c *client) Brokered() bool { return true }
 
+// The rate endpoint accepts amountFrom or amountTo for both rate types.
+func (c *client) SupportsRateMode(provider.RateType, provider.Direction) bool { return true }
+
+func rateParam(t provider.RateType) string {
+	if t == provider.Fixed {
+		return "fixed"
+	}
+	return "float"
+}
+
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}
 	v.Set("rateType", "float")
@@ -91,7 +101,7 @@ func New(cfg config.Provider) (provider.Provider, error) {
 		apiKey:    apiKey,
 		secretKey: secretKey,
 		affiliate: cfg.AffiliateCode,
-		http:      &http.Client{Timeout: 10 * time.Second},
+		http:      provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -159,8 +169,12 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 	v.Set("networkFrom", from.network)
 	v.Set("coinTo", to.code)
 	v.Set("networkTo", to.network)
-	v.Set("amountFrom", req.Amount)
-	v.Set("rateType", "float")
+	if req.Direction == provider.ToSide {
+		v.Set("amountTo", req.Amount)
+	} else {
+		v.Set("amountFrom", req.Amount)
+	}
+	v.Set("rateType", rateParam(req.RateType))
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/deposit/public/rate?"+v.Encode(), nil)
 	if err != nil {
@@ -194,8 +208,15 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 			q.Err = "pair currently unavailable"
 			return q, nil
 		}
+		fromAmount, ok := new(big.Rat).SetString(r.AmountFrom.String())
+		if !ok || fromAmount.Sign() <= 0 {
+			q.Err = "pair currently unavailable"
+			return q, nil
+		}
+		q.RateType = req.RateType
+		q.FromAmount = trimZeros(fromAmount.FloatString(12))
 		q.ToAmount = trimZeros(toAmount.FloatString(12))
-		q.Pair.Rate = trimZeros(new(big.Rat).Quo(toAmount, amount).FloatString(12))
+		q.Pair.Rate = trimZeros(new(big.Rat).Quo(toAmount, fromAmount).FloatString(12))
 		return q, nil
 	}
 
@@ -273,9 +294,13 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 		"networkFrom":       from.network,
 		"coinTo":            to.code,
 		"networkTo":         to.network,
-		"amountFrom":        json.Number(req.Amount),
 		"withdrawalAddress": req.DestinationAddress,
-		"rateType":          "float",
+		"rateType":          rateParam(req.RateType),
+	}
+	if req.Direction == provider.ToSide {
+		body["amountTo"] = json.Number(req.Amount)
+	} else {
+		body["amountFrom"] = json.Number(req.Amount)
 	}
 	if req.RefundAddress != "" {
 		body["refundAddress"] = req.RefundAddress

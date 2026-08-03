@@ -13,6 +13,8 @@ row_hover = "#111111"
 font = "ui-monospace, Menlo, Consolas, monospace"
 color_scheme = "dark"
 
+# rate_limit is outbound requests per second per provider (0 = unlimited),
+# rate_burst is how many may go out back-to-back before pacing kicks in
 [[providers]]
 name = "omenswap"
 type = "omenswap"
@@ -28,6 +30,8 @@ enabled = true
 api_key = ""
 # affiliate_code is stealthex additional_fee_percent, numeric e.g. "0.5"
 affiliate_code = ""
+rate_limit = 0.3
+rate_burst = 3
 
 [[providers]]
 name = "simpleswap"
@@ -35,6 +39,8 @@ type = "simpleswap"
 url = "https://api.simpleswap.io"
 enabled = true
 api_key = ""
+rate_limit = 1.0
+rate_burst = 3
 
 [[providers]]
 name = "fixedfloat"
@@ -43,6 +49,8 @@ url = "https://ff.io"
 enabled = true
 # fixedfloat api_key is "key:secret"
 api_key = ""
+rate_limit = 1.0
+rate_burst = 3
 
 [[providers]]
 name = "wizardswap"
@@ -51,6 +59,8 @@ url = "https://www.wizardswap.io"
 enabled = true
 api_key = ""
 affiliate_code = ""
+rate_limit = 2.0
+rate_burst = 4
 
 [[providers]]
 name = "bitcoinvn"
@@ -59,6 +69,8 @@ url = "https://bitcoinvn.io"
 enabled = true
 api_key = ""
 affiliate_code = ""
+rate_limit = 2.0
+rate_burst = 4
 
 [[providers]]
 name = "etzswap"
@@ -68,3 +80,5 @@ enabled = true
 # etzswap api_key is "public:secret"
 api_key = ""
 affiliate_code = ""
+rate_limit = 2.0
+rate_burst = 4

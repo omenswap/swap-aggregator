@@ -264,3 +264,86 @@ func TestHealthz(t *testing.T) {
 		t.Errorf("status %d body %s", rec.Code, rec.Body.String())
 	}
 }
+
+type ratedFake struct {
+	fakeProvider
+	modes map[string]bool
+}
+
+func (r *ratedFake) SupportsRateMode(t provider.RateType, d provider.Direction) bool {
+	return r.modes[string(t)+"/"+string(d)]
+}
+
+func TestQuotesFixedIsPricedFromTheSendAmount(t *testing.T) {
+	mk := func(name, to string) *ratedFake {
+		return &ratedFake{
+			fakeProvider: fakeProvider{name: name, pairs: []provider.Pair{ethPair},
+				quote: func(req provider.QuoteRequest) (provider.Quote, error) {
+					if req.RateType != provider.Fixed || req.Direction != provider.FromSide {
+						t.Errorf("%s got %+v", name, req)
+					}
+					return provider.Quote{Provider: name, Pair: ethPair,
+						FromAmount: req.Amount, ToAmount: to, RateType: provider.Fixed}, nil
+				}},
+			modes: map[string]bool{"fixed/from": true, "floating/from": true},
+		}
+	}
+	low, high := mk("low", "2900"), mk("high", "3000")
+	s := New([]provider.Provider{low, high}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/quotes?from=ETH&to=USDC&amount=1&rate=fixed", nil))
+	var resp struct {
+		Quotes []struct {
+			Provider   string `json:"provider"`
+			FromAmount string `json:"from_amount"`
+			ToAmount   string `json:"to_amount"`
+			RateType   string `json:"rate_type"`
+		} `json:"quotes"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Quotes) != 2 || resp.Quotes[0].Provider != "high" {
+		t.Fatalf("expected the biggest payout first: %+v", resp.Quotes)
+	}
+	if resp.Quotes[0].FromAmount != "1" || resp.Quotes[0].RateType != "fixed" {
+		t.Errorf("quote = %+v", resp.Quotes[0])
+	}
+}
+
+func TestQuotesFixedMarksProvidersWithoutFixedRates(t *testing.T) {
+	plain := &fakeProvider{name: "floatonly", pairs: []provider.Pair{ethPair},
+		quote: func(provider.QuoteRequest) (provider.Quote, error) {
+			t.Error("provider without fixed support must not be asked for a quote")
+			return provider.Quote{}, nil
+		}}
+	s := New([]provider.Provider{plain}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/quotes?from=ETH&to=USDC&amount=1&rate=fixed", nil))
+	var resp struct {
+		Quotes []struct {
+			Provider string `json:"provider"`
+			Err      string `json:"err"`
+			NoFixed  bool   `json:"no_fixed_rate"`
+		} `json:"quotes"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &resp)
+	if len(resp.Quotes) != 1 || !resp.Quotes[0].NoFixed || resp.Quotes[0].Err == "" {
+		t.Errorf("quotes = %+v", resp.Quotes)
+	}
+}
+
+func TestQuotesFloatingStillSortsByReceiveAmount(t *testing.T) {
+	low := &fakeProvider{name: "low", pairs: []provider.Pair{ethPair}, quote: quoteFor("low", "2900")}
+	high := &fakeProvider{name: "high", pairs: []provider.Pair{ethPair}, quote: quoteFor("high", "3000")}
+	s := New([]provider.Provider{low, high}, time.Minute)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest("GET", "/api/quotes?from=ETH&to=USDC&amount=1&rate=floating", nil))
+	var resp struct {
+		Quotes []struct{ Provider string } `json:"quotes"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &resp)
+	if resp.Quotes[0].Provider != "high" {
+		t.Errorf("quotes = %+v", resp.Quotes)
+	}
+}

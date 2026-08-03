@@ -88,7 +88,7 @@ func New(cfg config.Provider) (provider.Provider, error) {
 		baseURL:   strings.TrimRight(cfg.URL, "/"),
 		apiKey:    cfg.APIKey,
 		affiliate: cfg.AffiliateCode,
-		http:      &http.Client{Timeout: 10 * time.Second},
+		http:      provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -116,14 +116,24 @@ func (c *client) Pairs(ctx context.Context) ([]provider.Pair, error) {
 	return pairs, nil
 }
 
-func pairQuery(from, to currency) url.Values {
+// fixed and reverse are plain booleans on every v3 pair endpoint.
+func (c *client) SupportsRateMode(provider.RateType, provider.Direction) bool { return true }
+
+func boolParam(b bool) string {
+	if b {
+		return "true"
+	}
+	return "false"
+}
+
+func pairQuery(from, to currency, t provider.RateType, d provider.Direction) url.Values {
 	return url.Values{
 		"tickerFrom":  {from.Ticker},
 		"networkFrom": {from.Network},
 		"tickerTo":    {to.Ticker},
 		"networkTo":   {to.Network},
-		"fixed":       {"false"},
-		"reverse":     {"false"},
+		"fixed":       {boolParam(t == provider.Fixed)},
+		"reverse":     {boolParam(d == provider.ToSide)},
 	}
 }
 
@@ -147,7 +157,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 			Max json.Number `json:"max"`
 		} `json:"result"`
 	}
-	if err := c.get(ctx, "/v3/ranges", pairQuery(from, to), &ranges); err != nil {
+	if err := c.get(ctx, "/v3/ranges", pairQuery(from, to, req.RateType, req.Direction), &ranges); err != nil {
 		return provider.Quote{}, err
 	}
 	q.Pair.MinFrom = ranges.Result.Min.String()
@@ -161,7 +171,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		return q, nil
 	}
 
-	query := pairQuery(from, to)
+	query := pairQuery(from, to, req.RateType, req.Direction)
 	query.Set("amount", req.Amount)
 	var est struct {
 		Result struct {
@@ -171,9 +181,17 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 	if err := c.get(ctx, "/v3/estimates", query, &est); err != nil {
 		return provider.Quote{}, err
 	}
-	q.ToAmount = est.Result.EstimatedAmount.String()
-	if toAmount, ok := new(big.Rat).SetString(q.ToAmount); ok {
-		q.Pair.Rate = trimZeros(new(big.Rat).Quo(toAmount, amount).FloatString(8))
+	q.RateType = req.RateType
+	if req.Direction == provider.ToSide {
+		q.ToAmount = req.Amount
+		q.FromAmount = est.Result.EstimatedAmount.String()
+	} else {
+		q.FromAmount = req.Amount
+		q.ToAmount = est.Result.EstimatedAmount.String()
+	}
+	fromAmount, okFrom := new(big.Rat).SetString(q.FromAmount)
+	if toAmount, ok := new(big.Rat).SetString(q.ToAmount); ok && okFrom && fromAmount.Sign() > 0 {
+		q.Pair.Rate = trimZeros(new(big.Rat).Quo(toAmount, fromAmount).FloatString(8))
 	}
 	return q, nil
 }
@@ -229,8 +247,8 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 		"networkTo":   to.Network,
 		"amount":      req.Amount,
 		"addressTo":   req.DestinationAddress,
-		"fixed":       false,
-		"reverse":     false,
+		"fixed":       req.RateType == provider.Fixed,
+		"reverse":     req.Direction == provider.ToSide,
 	}
 	if req.RefundAddress != "" {
 		body["userRefundAddress"] = req.RefundAddress

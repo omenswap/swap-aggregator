@@ -30,6 +30,16 @@ type Provider struct {
 	Enabled       bool   `toml:"enabled"`
 	AffiliateCode string `toml:"affiliate_code"`
 	APIKey        string `toml:"api_key"`
+	// RateLimit caps outbound requests per second; zero means no limit.
+	RateLimit float64 `toml:"rate_limit"`
+	RateBurst float64 `toml:"rate_burst"`
+}
+
+func (p Provider) Burst() float64 {
+	if p.RateBurst < 1 {
+		return 1
+	}
+	return p.RateBurst
 }
 
 type Theme struct {
@@ -137,6 +147,9 @@ func Load(path string) (*Config, error) {
 		u, err := url.Parse(p.URL)
 		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 			return nil, fmt.Errorf("provider %q: invalid url %q", p.Name, p.URL)
+		}
+		if p.RateLimit < 0 || p.RateBurst < 0 {
+			return nil, fmt.Errorf("provider %q: rate_limit and rate_burst must not be negative", p.Name)
 		}
 		if p.Enabled {
 			enabled++

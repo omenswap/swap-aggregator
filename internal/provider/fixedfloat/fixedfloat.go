@@ -54,7 +54,7 @@ func New(cfg config.Provider) (provider.Provider, error) {
 		key:       key,
 		secret:    secret,
 		affiliate: cfg.AffiliateCode,
-		http:      &http.Client{Timeout: 10 * time.Second},
+		http:      provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -145,6 +145,24 @@ type apiSide struct {
 	} `json:"tx"`
 }
 
+// The v2 API takes type float|fixed with direction from|to on both price and
+// create.
+func (c *client) SupportsRateMode(provider.RateType, provider.Direction) bool { return true }
+
+func typeParam(t provider.RateType) string {
+	if t == provider.Fixed {
+		return "fixed"
+	}
+	return "float"
+}
+
+func directionParam(d provider.Direction) string {
+	if d == provider.ToSide {
+		return "to"
+	}
+	return "from"
+}
+
 func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider.Quote, error) {
 	q := provider.Quote{Provider: c.name, Pair: provider.Pair{From: req.From, To: req.To}}
 	fromCcy, ok := currencyCodes[req.From]
@@ -155,10 +173,10 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 	}
 
 	body := map[string]string{
-		"type":      "float",
+		"type":      typeParam(req.RateType),
 		"fromCcy":   fromCcy,
 		"toCcy":     toCcy,
-		"direction": "from",
+		"direction": directionParam(req.Direction),
 		"amount":    req.Amount,
 	}
 	var data struct {
@@ -181,8 +199,10 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		return provider.Quote{}, err
 	}
 
+	q.RateType = req.RateType
 	q.Pair.MinFrom = string(data.From.Min)
 	q.Pair.MaxFrom = string(data.From.Max)
+	q.FromAmount = string(data.From.Amount)
 	q.ToAmount = string(data.To.Amount)
 	fromAmount, ok := new(big.Rat).SetString(string(data.From.Amount))
 	toAmount, ok2 := new(big.Rat).SetString(string(data.To.Amount))
@@ -263,10 +283,10 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 	}
 
 	body := map[string]string{
-		"type":      "float",
+		"type":      typeParam(req.RateType),
 		"fromCcy":   fromCcy,
 		"toCcy":     toCcy,
-		"direction": "from",
+		"direction": directionParam(req.Direction),
 		"amount":    req.Amount,
 		"toAddress": req.DestinationAddress,
 	}

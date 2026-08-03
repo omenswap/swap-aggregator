@@ -65,7 +65,7 @@ func New(cfg config.Provider) (provider.Provider, error) {
 		baseURL:   strings.TrimRight(cfg.URL, "/"),
 		apiKey:    cfg.APIKey,
 		affiliate: cfg.AffiliateCode,
-		http:      &http.Client{Timeout: 10 * time.Second},
+		http:      provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -127,11 +127,28 @@ func (c *client) route(from, to string) (map[string]any, bool) {
 	return map[string]any{"from": f, "to": t}, true
 }
 
-func (c *client) rateBody(route map[string]any) map[string]any {
+// estimation direct|reversed selects which side amount refers to.
+func (c *client) SupportsRateMode(provider.RateType, provider.Direction) bool { return true }
+
+func estimation(d provider.Direction) string {
+	if d == provider.ToSide {
+		return "reversed"
+	}
+	return "direct"
+}
+
+func rateParam(t provider.RateType) string {
+	if t == provider.Fixed {
+		return "fixed"
+	}
+	return "floating"
+}
+
+func (c *client) rateBody(route map[string]any, t provider.RateType, d provider.Direction) map[string]any {
 	body := map[string]any{
 		"route":      route,
-		"estimation": "direct",
-		"rate":       "floating",
+		"estimation": estimation(d),
+		"rate":       rateParam(t),
 	}
 	if c.affiliate != "" {
 		body["additional_fee_percent"] = json.Number(c.affiliate)
@@ -156,7 +173,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		MinAmount json.RawMessage `json:"min_amount"`
 		MaxAmount json.RawMessage `json:"max_amount"`
 	}
-	if err := c.post(ctx, "/v4/rates/range", c.rateBody(route), &rng); err != nil {
+	if err := c.post(ctx, "/v4/rates/range", c.rateBody(route, req.RateType, req.Direction), &rng); err != nil {
 		return provider.Quote{}, err
 	}
 	q.Pair.MinFrom = numString(rng.MinAmount)
@@ -170,7 +187,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		return q, nil
 	}
 
-	body := c.rateBody(route)
+	body := c.rateBody(route, req.RateType, req.Direction)
 	body["amount"] = json.Number(req.Amount)
 	var est struct {
 		EstimatedAmount json.RawMessage `json:"estimated_amount"`
@@ -178,9 +195,17 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 	if err := c.post(ctx, "/v4/rates/estimated-amount", body, &est); err != nil {
 		return provider.Quote{}, err
 	}
-	q.ToAmount = numString(est.EstimatedAmount)
-	if to, ok := new(big.Rat).SetString(q.ToAmount); ok {
-		q.Pair.Rate = trimZeros(new(big.Rat).Quo(to, amount).FloatString(8))
+	q.RateType = req.RateType
+	if req.Direction == provider.ToSide {
+		q.ToAmount = req.Amount
+		q.FromAmount = numString(est.EstimatedAmount)
+	} else {
+		q.FromAmount = req.Amount
+		q.ToAmount = numString(est.EstimatedAmount)
+	}
+	from, okFrom := new(big.Rat).SetString(q.FromAmount)
+	if to, ok := new(big.Rat).SetString(q.ToAmount); ok && okFrom && from.Sign() > 0 {
+		q.Pair.Rate = trimZeros(new(big.Rat).Quo(to, from).FloatString(8))
 	}
 	return q, nil
 }
@@ -227,7 +252,7 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 	if !ok {
 		return provider.Swap{}, fmt.Errorf("stealthex: pair %s/%s not supported", req.From, req.To)
 	}
-	body := c.rateBody(route)
+	body := c.rateBody(route, req.RateType, req.Direction)
 	body["amount"] = json.Number(req.Amount)
 	body["address"] = req.DestinationAddress
 	if req.RefundAddress != "" {

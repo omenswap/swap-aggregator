@@ -30,7 +30,7 @@ func New(cfg config.Provider) (provider.Provider, error) {
 		name:      cfg.Name,
 		baseURL:   strings.TrimRight(cfg.URL, "/"),
 		affiliate: cfg.AffiliateCode,
-		http:      &http.Client{Timeout: 10 * time.Second},
+		http:      provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -42,46 +42,189 @@ type apiPair struct {
 	ToToken           string            `json:"to_token"`
 	Rate              string            `json:"rate"`
 	PriceUnavailable  bool              `json:"price_unavailable"`
+	FixedUnavailable  bool              `json:"fixed_rate_unavailable"`
 	PayoutUnavailable bool              `json:"payout_unavailable"`
 	Fees              map[string]string `json:"fees"`
 	MaxFromAmount     map[string]string `json:"max_from_amount"`
 	MinFromAmount     map[string]string `json:"min_from_amount"`
 }
 
-func (c *client) Pairs(ctx context.Context) ([]provider.Pair, error) {
+// Limits and fees are quoted per rate type, so the same pair looks different
+// depending on which one the visitor asked for.
+func (c *client) pairsFor(ctx context.Context, rate provider.RateType) ([]provider.Pair, error) {
 	var resp struct {
 		Pairs []apiPair `json:"pairs"`
 	}
 	if err := c.get(ctx, "/api/v1/pairs", &resp); err != nil {
 		return nil, err
 	}
+	key := string(rate)
 	pairs := make([]provider.Pair, 0, len(resp.Pairs))
 	for _, p := range resp.Pairs {
 		pairs = append(pairs, provider.Pair{
-			From:        p.FromToken,
-			To:          p.ToToken,
-			Symbol:      p.Symbol,
-			Rate:        p.Rate,
-			MinFrom:     p.MinFromAmount["floating"],
-			MaxFrom:     p.MaxFromAmount["floating"],
-			Fee:         p.Fees["floating"],
-			Unavailable: p.PriceUnavailable || p.PayoutUnavailable,
+			From:    p.FromToken,
+			To:      p.ToToken,
+			Symbol:  p.Symbol,
+			Rate:    p.Rate,
+			MinFrom: p.MinFromAmount[key],
+			MaxFrom: p.MaxFromAmount[key],
+			Fee:     p.Fees[key],
+			Unavailable: p.PriceUnavailable || p.PayoutUnavailable ||
+				(rate == provider.Fixed && p.FixedUnavailable),
 		})
 	}
 	return pairs, nil
 }
 
+func (c *client) Pairs(ctx context.Context) ([]provider.Pair, error) {
+	return c.pairsFor(ctx, provider.Floating)
+}
+
+func (c *client) SupportsRateMode(t provider.RateType, d provider.Direction) bool {
+	return d == provider.FromSide
+}
+
+func (c *client) pairFor(pairs []provider.Pair, from, to string) (provider.Pair, bool) {
+	for _, p := range pairs {
+		if p.From == from && p.To == to {
+			return p, true
+		}
+	}
+	return provider.Pair{}, false
+}
+
+type apiQuote struct {
+	FromAmount string `json:"from_amount"`
+	ToAmount   string `json:"to_amount"`
+	Rate       string `json:"rate"`
+}
+
+func (c *client) fixedQuote(ctx context.Context, req provider.QuoteRequest) (provider.Quote, error) {
+	q := provider.Quote{Provider: c.name, RateType: provider.Fixed}
+	pairs, err := c.pairsFor(ctx, provider.Fixed)
+	if err != nil {
+		return provider.Quote{}, err
+	}
+	raw, ok := c.pairFor(pairs, req.From, req.To)
+	if !ok {
+		q.Err = "pair not supported"
+		return q, nil
+	}
+	q.Pair = raw
+	if raw.Unavailable {
+		q.Err = "no fixed rate for " + req.From
+		return q, nil
+	}
+
+	target, ok := new(big.Rat).SetString(req.Amount)
+	if !ok || target.Sign() <= 0 {
+		q.Err = "invalid amount"
+		return q, nil
+	}
+	if min, ok := new(big.Rat).SetString(raw.MinFrom); ok && target.Cmp(min) < 0 {
+		q.Err = fmt.Sprintf("below minimum of %s %s", raw.MinFrom, raw.From)
+		return q, nil
+	}
+	if max, ok := new(big.Rat).SetString(raw.MaxFrom); ok && max.Sign() > 0 && target.Cmp(max) > 0 {
+		q.Err = fmt.Sprintf("above maximum of %s %s", raw.MaxFrom, raw.From)
+		return q, nil
+	}
+
+	out, msg, err := c.solveFixed(ctx, raw, target)
+	if err != nil {
+		return provider.Quote{}, err
+	}
+	if msg != "" {
+		q.Err = msg
+		return q, nil
+	}
+	q.FromAmount = trimZeros(out.FromAmount)
+	q.ToAmount = trimZeros(out.ToAmount)
+	q.Pair.Rate = out.Rate
+	return q, nil
+}
+
+const fixedSolveCalls = 3
+
+// The API only prices a fixed rate from the receive side, so walk the receive
+// amount until the deposit it implies lands just under what the visitor wants
+// to send. Pricing is linear in the receive amount, so scaling converges in a
+// couple of steps.
+func (c *client) solveFixed(ctx context.Context, pair provider.Pair, target *big.Rat) (apiQuote, string, error) {
+	rate, ok := new(big.Rat).SetString(pair.Rate)
+	if !ok || rate.Sign() <= 0 {
+		return apiQuote{}, "pair currently unavailable", nil
+	}
+	guess := new(big.Rat).Mul(target, rate)
+
+	var best apiQuote
+	var bestFrom *big.Rat
+	for range fixedSolveCalls {
+		body := map[string]string{
+			"pair_symbol": pair.Symbol,
+			"rate_type":   string(provider.Fixed),
+			"to_amount":   trimZeros(guess.FloatString(12)),
+		}
+		var out apiQuote
+		if err := c.post(ctx, "/api/v1/quote", body, &out); err != nil {
+			if bestFrom != nil {
+				break
+			}
+			return apiQuote{}, quoteError(err), nil
+		}
+		from, ok := new(big.Rat).SetString(out.FromAmount)
+		if !ok || from.Sign() <= 0 {
+			return apiQuote{}, "pair currently unavailable", nil
+		}
+		if from.Cmp(target) <= 0 && (bestFrom == nil || from.Cmp(bestFrom) > 0) {
+			best, bestFrom = out, from
+		}
+		// Within 0.1% and not over: close enough to stop paying for round trips.
+		if bestFrom != nil {
+			gap := new(big.Rat).Sub(target, bestFrom)
+			if gap.Cmp(new(big.Rat).Mul(target, big.NewRat(1, 1000))) <= 0 {
+				break
+			}
+		}
+		guess.Mul(guess, new(big.Rat).Quo(target, from))
+		// Undershoot slightly so the deposit never exceeds what was asked for.
+		guess.Mul(guess, big.NewRat(9995, 10000))
+	}
+	if bestFrom == nil {
+		return apiQuote{}, "no fixed rate for this amount", nil
+	}
+	return best, "", nil
+}
+
+func quoteError(err error) string {
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "pair not found"), strings.Contains(msg, "inactive"):
+		return "pair not supported"
+	case strings.Contains(msg, "fixed-rate swaps are not available"):
+		return "no fixed rate for this asset"
+	case strings.Contains(msg, "minimum"), strings.Contains(msg, "maximum"),
+		strings.Contains(msg, "amount"):
+		return strings.TrimSpace(strings.SplitN(err.Error(), ":", 2)[1])
+	}
+	return "provider unavailable"
+}
+
 func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider.Quote, error) {
+	if req.RateType == provider.Fixed {
+		return c.fixedQuote(ctx, req)
+	}
 	pairs, err := c.Pairs(ctx)
 	if err != nil {
 		return provider.Quote{}, err
 	}
-	q := provider.Quote{Provider: c.name}
+	q := provider.Quote{Provider: c.name, RateType: provider.Floating}
 	for _, p := range pairs {
 		if p.From != req.From || p.To != req.To {
 			continue
 		}
 		q.Pair = p
+		q.FromAmount = req.Amount
 		if p.Unavailable || p.Rate == "" {
 			q.Err = "pair currently unavailable"
 			return q, nil
@@ -146,26 +289,39 @@ func (s apiSwap) toSwap() provider.Swap {
 }
 
 func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (provider.Swap, error) {
-	pairs, err := c.Pairs(ctx)
+	rate := req.RateType
+	if rate == "" {
+		rate = provider.Floating
+	}
+	pairs, err := c.pairsFor(ctx, rate)
 	if err != nil {
 		return provider.Swap{}, err
 	}
-	symbol := ""
-	for _, p := range pairs {
-		if p.From == req.From && p.To == req.To {
-			symbol = p.Symbol
-			break
-		}
-	}
-	if symbol == "" {
+	pair, ok := c.pairFor(pairs, req.From, req.To)
+	if !ok {
 		return provider.Swap{}, fmt.Errorf("%s: pair %s/%s not supported", c.name, req.From, req.To)
 	}
 
 	body := map[string]string{
-		"pair_symbol":         symbol,
-		"rate_type":           "floating",
-		"from_amount":         req.Amount,
+		"pair_symbol":         pair.Symbol,
+		"rate_type":           string(rate),
 		"destination_address": req.DestinationAddress,
+	}
+	if rate == provider.Fixed {
+		target, ok := new(big.Rat).SetString(req.Amount)
+		if !ok || target.Sign() <= 0 {
+			return provider.Swap{}, fmt.Errorf("%s: invalid amount %q", c.name, req.Amount)
+		}
+		solved, msg, err := c.solveFixed(ctx, pair, target)
+		if err != nil {
+			return provider.Swap{}, err
+		}
+		if msg != "" {
+			return provider.Swap{}, fmt.Errorf("%s: %s", c.name, msg)
+		}
+		body["to_amount"] = solved.ToAmount
+	} else {
+		body["from_amount"] = req.Amount
 	}
 	if req.RefundAddress != "" {
 		body["refund_address"] = req.RefundAddress

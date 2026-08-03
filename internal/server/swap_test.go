@@ -95,8 +95,12 @@ func TestCreateSwapProviderError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loc.Path != "/" || loc.Query().Get("error") != "omenswap: insufficient reserves" {
+	if loc.Path != "/" || loc.Query().Get("error") == "" {
 		t.Errorf("Location = %q", rec.Header().Get("Location"))
+	}
+	// The provider's own wording is logged, not handed to the visitor.
+	if strings.Contains(rec.Header().Get("Location"), "insufficient+reserves") {
+		t.Errorf("provider error leaked to the user: %q", rec.Header().Get("Location"))
 	}
 }
 

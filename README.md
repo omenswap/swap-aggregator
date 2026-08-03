@@ -13,9 +13,9 @@ Inspired by [Trocador](https://trocador.app) and [OrangeFren](https://orangefren
 | [Exolix](https://exolix.com)     | only for swap execution | never | XMR, BTC, ETH, USDT, USDC, 100+ more |
 | [omenswap](https://omenswap.com) | no | never | XMR, BTC, ETH, USDT, USDC, SOL |
 | [BitcoinVN](https://bitcoinvn.io) | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 30+ more |
-| [StealthEx](https://stealthex.co) | yes | never | XMR, BTC, ETH, USDT, USDC, 100+ more |
-| [WizardSwap](https://wizardswap.io) | yes | never | XMR, BTC, LTC, ETH, BCH, DOGE |
-| [SimpleSwap](https://simpleswap.io) | yes | sometimes | XMR, BTC, ETH, USDT, USDC, 100+ more |
+| [PegasusSwap](https://pegasusswap.com/) | yes | never | XMR, BTC, ETH, USDT, USDC, 30+ more |
+| [Swapuz](https://swapuz.com/) | yes | never | XMR, BTC, ETH, USDT, USDC, 100+ more |
+| [WizardSwap](https://wizardswap.io) | theoretically no but very low ratelimit without one | never | XMR, BTC, LTC, ETH, BCH, DOGE |
 
 Open a PR to add a new site!
 
@@ -27,9 +27,6 @@ cp config.example.toml config.toml
 # Edit and choose which providers to enable
 # Add API keys and affiliate codes as desired
 vim config.toml
-
-# Edit styles
-vim internal/server/static/style.css
 ```
 
 ## Local Deployment

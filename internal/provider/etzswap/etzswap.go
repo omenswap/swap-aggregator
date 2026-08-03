@@ -175,6 +175,9 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		v.Set("amountFrom", req.Amount)
 	}
 	v.Set("rateType", rateParam(req.RateType))
+	if c.affiliate != "" {
+		v.Set("affiliateToken", c.affiliate)
+	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/deposit/public/rate?"+v.Encode(), nil)
 	if err != nil {
@@ -228,6 +231,10 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 	if e, ok := env.Errors["amountTooBig"]; ok {
 		q.Pair.MaxFrom = e.Args.MaxAllowedAmount.String()
 		q.Err = fmt.Sprintf("above maximum of %s %s", e.Args.MaxAllowedAmount.String(), req.From)
+		return q, nil
+	}
+	if _, ok := env.Errors["unsupportedPair"]; ok {
+		q.Err = "pair not supported"
 		return q, nil
 	}
 	if _, ok := env.Errors["unsupportedExchangePairs"]; ok {

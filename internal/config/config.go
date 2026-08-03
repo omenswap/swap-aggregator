@@ -30,6 +30,9 @@ type Provider struct {
 	Enabled       bool   `toml:"enabled"`
 	AffiliateCode string `toml:"affiliate_code"`
 	APIKey        string `toml:"api_key"`
+	// AffiliateFeePercent is the extra partner fee, in percent, for providers
+	// that take a numeric markup rather than only a code.
+	AffiliateFeePercent float64 `toml:"affiliate_fee_percent"`
 	// RateLimit caps outbound requests per second; zero means no limit.
 	RateLimit float64 `toml:"rate_limit"`
 	RateBurst float64 `toml:"rate_burst"`
@@ -147,6 +150,9 @@ func Load(path string) (*Config, error) {
 		u, err := url.Parse(p.URL)
 		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
 			return nil, fmt.Errorf("provider %q: invalid url %q", p.Name, p.URL)
+		}
+		if p.AffiliateFeePercent < 0 || p.AffiliateFeePercent > 20 {
+			return nil, fmt.Errorf("provider %q: affiliate_fee_percent must be between 0 and 20", p.Name)
 		}
 		if p.RateLimit < 0 || p.RateBurst < 0 {
 			return nil, fmt.Errorf("provider %q: rate_limit and rate_burst must not be negative", p.Name)

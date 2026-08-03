@@ -193,6 +193,7 @@ func TestCreateSwapSendsRefundAndAffiliate(t *testing.T) {
 func TestStatusMapping(t *testing.T) {
 	cases := map[string]string{
 		"waiting":    "pending",
+		"verifying":  "deposited",
 		"confirming": "awaiting_confirmation",
 		"exchanging": "deposited",
 		"sending":    "deposited",
@@ -200,7 +201,6 @@ func TestStatusMapping(t *testing.T) {
 		"expired":    "expired",
 		"refunded":   "refunded",
 		"failed":     "failed",
-		"verifying":  "verifying",
 	}
 	for apiStatus, want := range cases {
 		mux := http.NewServeMux()
@@ -312,5 +312,51 @@ func TestWithAPIKeyReturnsIsolatedClient(t *testing.T) {
 	}
 	if !keyed.(provider.Gated).Brokered() || keyed.(*client).apiKey != "visitor-key" {
 		t.Fatalf("keyed provider = %#v", keyed)
+	}
+}
+
+// A fixed-rate exchange must carry the rate_id from the estimate.
+func TestCreateFixedSwapSendsRateID(t *testing.T) {
+	var createBody map[string]any
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v4/rates/estimated-amount", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"estimated_amount":3200,"rate":{"id":"rate-42","valid_until":"2026-08-03T12:00:00Z"}}`))
+	})
+	mux.HandleFunc("POST /v4/exchanges", func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&createBody)
+		w.Write([]byte(exchangeJSON))
+	})
+	p := newTestProvider(t, mux, "")
+	_, err := p.CreateSwap(context.Background(), provider.SwapRequest{
+		From: "ETH", To: "USDC", Amount: "1", DestinationAddress: "0xdest",
+		Direction: provider.FromSide, RateType: provider.Fixed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if createBody["rate_id"] != "rate-42" {
+		t.Errorf("create body = %v", createBody)
+	}
+	if _, ok := createBody["additional_fee_percent"]; ok {
+		t.Errorf("partner fee is floating-only but was sent: %v", createBody)
+	}
+}
+
+func TestCreateFloatingSwapSendsNoRateID(t *testing.T) {
+	var createBody map[string]any
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /v4/exchanges", func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&createBody)
+		w.Write([]byte(exchangeJSON))
+	})
+	p := newTestProvider(t, mux, "")
+	if _, err := p.CreateSwap(context.Background(), provider.SwapRequest{
+		From: "ETH", To: "USDC", Amount: "1", DestinationAddress: "0xdest",
+		Direction: provider.FromSide, RateType: provider.Floating,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := createBody["rate_id"]; ok {
+		t.Errorf("floating create must not carry a rate_id: %v", createBody)
 	}
 }

@@ -253,11 +253,36 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 	if req.RefundAddress != "" {
 		body["userRefundAddress"] = req.RefundAddress
 	}
+	if req.RateType == provider.Fixed {
+		id, err := c.rateID(ctx, from, to, req)
+		if err != nil {
+			return provider.Swap{}, err
+		}
+		body["rateId"] = id
+	}
 	var e apiExchange
 	if err := c.post(ctx, "/v3/exchanges", body, &e); err != nil {
 		return provider.Swap{}, err
 	}
 	return e.toSwap(), nil
+}
+
+// A fixed-rate exchange has to reference the estimate it was priced from.
+func (c *client) rateID(ctx context.Context, from, to currency, req provider.SwapRequest) (string, error) {
+	query := pairQuery(from, to, req.RateType, req.Direction)
+	query.Set("amount", req.Amount)
+	var est struct {
+		Result struct {
+			RateID string `json:"rateId"`
+		} `json:"result"`
+	}
+	if err := c.get(ctx, "/v3/estimates", query, &est); err != nil {
+		return "", err
+	}
+	if est.Result.RateID == "" {
+		return "", fmt.Errorf("simpleswap: no fixed rate available for %s/%s", req.From, req.To)
+	}
+	return est.Result.RateID, nil
 }
 
 func (c *client) Status(ctx context.Context, id string) (provider.Swap, error) {

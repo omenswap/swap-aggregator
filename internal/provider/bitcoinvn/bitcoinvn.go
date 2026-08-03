@@ -46,14 +46,21 @@ var statusMap = map[string]string{
 }
 
 type client struct {
-	name      string
-	baseURL   string
-	apiKey    string
-	affiliate string
-	http      *http.Client
+	name       string
+	baseURL    string
+	apiKey     string
+	affiliate  string
+	feePercent float64
+	http       *http.Client
 }
 
 func (c *client) Brokered() bool { return true }
+
+// Quotes are binding for 15 minutes, so every quote is a fixed rate. A locked
+// rate also satisfies a floating request, so both modes are offered.
+func (c *client) SupportsRateMode(t provider.RateType, d provider.Direction) bool {
+	return d == provider.FromSide
+}
 
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}
@@ -74,11 +81,12 @@ func (c *client) SwapLink(req provider.QuoteRequest) string {
 
 func New(cfg config.Provider) (provider.Provider, error) {
 	return &client{
-		name:      cfg.Name,
-		baseURL:   strings.TrimRight(cfg.URL, "/"),
-		apiKey:    cfg.APIKey,
-		affiliate: cfg.AffiliateCode,
-		http:      provider.HTTPClient(cfg, 10*time.Second),
+		name:       cfg.Name,
+		baseURL:    strings.TrimRight(cfg.URL, "/"),
+		apiKey:     cfg.APIKey,
+		affiliate:  cfg.AffiliateCode,
+		feePercent: cfg.AffiliateFeePercent,
+		http:       provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -152,6 +160,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		"settleMethod":  to,
 		"depositAmount": json.Number(req.Amount),
 	}
+	c.addMarkup(body)
 	b, err := json.Marshal(body)
 	if err != nil {
 		return provider.Quote{}, err
@@ -179,7 +188,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 			return q, nil
 		}
 		q.FromAmount = req.Amount
-		q.RateType = provider.Floating
+		q.RateType = provider.Fixed
 		q.ToAmount = trimZeros(toAmount.FloatString(12))
 		q.Pair.Rate = trimZeros(new(big.Rat).Quo(toAmount, amount).FloatString(12))
 		return q, nil
@@ -241,6 +250,20 @@ func (o apiOrder) toSwap() provider.Swap {
 	}
 }
 
+const maxMarkupRate = 0.10
+
+// markupRate is a fraction of the rate, capped by the API; config carries a percent.
+func (c *client) addMarkup(body map[string]any) {
+	rate := c.feePercent / 100
+	if rate <= 0 {
+		return
+	}
+	if rate > maxMarkupRate {
+		rate = maxMarkupRate
+	}
+	body["markupRate"] = rate
+}
+
 func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (provider.Swap, error) {
 	from, okFrom := methods[req.From]
 	to, okTo := methods[req.To]
@@ -253,6 +276,7 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 		"settleMethod":  to,
 		"depositAmount": json.Number(req.Amount),
 	}
+	c.addMarkup(quoteBody)
 	if err := c.post(ctx, "/api/quotes", quoteBody, &quote); err != nil {
 		return provider.Swap{}, err
 	}

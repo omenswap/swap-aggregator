@@ -231,3 +231,37 @@ rate_limit = -1
 		t.Error("expected an error for a negative rate limit")
 	}
 }
+
+func TestAffiliateFeePercent(t *testing.T) {
+	c, err := Load(writeTemp(t, `
+[[providers]]
+name = "one"
+type = "omenswap"
+url = "http://localhost:8080"
+enabled = true
+affiliate_code = "abc"
+affiliate_fee_percent = 0.6
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Providers[0].AffiliateFeePercent != 0.6 {
+		t.Errorf("provider = %+v", c.Providers[0])
+	}
+}
+
+func TestAffiliateFeePercentRejectsOutOfRange(t *testing.T) {
+	for _, bad := range []string{"-1", "25"} {
+		_, err := Load(writeTemp(t, `
+[[providers]]
+name = "one"
+type = "omenswap"
+url = "http://localhost:8080"
+enabled = true
+affiliate_fee_percent = `+bad+`
+`))
+		if err == nil {
+			t.Errorf("%s: expected an error", bad)
+		}
+	}
+}

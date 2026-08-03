@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,23 +39,25 @@ var currencyCodes = map[string]string{
 }
 
 type client struct {
-	name      string
-	baseURL   string
-	key       string
-	secret    string
-	affiliate string
-	http      *http.Client
+	name       string
+	baseURL    string
+	key        string
+	secret     string
+	affiliate  string
+	feePercent float64
+	http       *http.Client
 }
 
 func New(cfg config.Provider) (provider.Provider, error) {
 	key, secret, _ := strings.Cut(cfg.APIKey, ":")
 	return &client{
-		name:      cfg.Name,
-		baseURL:   strings.TrimRight(cfg.URL, "/"),
-		key:       key,
-		secret:    secret,
-		affiliate: cfg.AffiliateCode,
-		http:      provider.HTTPClient(cfg, 10*time.Second),
+		name:       cfg.Name,
+		baseURL:    strings.TrimRight(cfg.URL, "/"),
+		key:        key,
+		secret:     secret,
+		affiliate:  cfg.AffiliateCode,
+		feePercent: cfg.AffiliateFeePercent,
+		http:       provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
 
@@ -179,6 +182,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		"direction": directionParam(req.Direction),
 		"amount":    req.Amount,
 	}
+	c.addAffiliate(body)
 	var data struct {
 		From apiSide `json:"from"`
 		To   apiSide `json:"to"`
@@ -290,9 +294,7 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 		"amount":    req.Amount,
 		"toAddress": req.DestinationAddress,
 	}
-	if req.RefundAddress != "" {
-		body["refundAddress"] = req.RefundAddress
-	}
+	c.addAffiliate(body)
 
 	var o apiOrder
 	if err := c.post(ctx, "/api/v2/create", body, &o); err != nil {
@@ -312,6 +314,17 @@ func (c *client) Status(ctx context.Context, id string) (provider.Swap, error) {
 		return provider.Swap{}, err
 	}
 	return o.toSwap(c.canonical(o.From.Code), c.canonical(o.To.Code)), nil
+}
+
+// afftax is only honoured alongside a refcode from the same account.
+func (c *client) addAffiliate(body map[string]string) {
+	if c.affiliate == "" {
+		return
+	}
+	body["refcode"] = c.affiliate
+	if c.feePercent > 0 {
+		body["afftax"] = strconv.FormatFloat(c.feePercent, 'f', -1, 64)
+	}
 }
 
 func (c *client) post(ctx context.Context, path string, body any, out any) error {

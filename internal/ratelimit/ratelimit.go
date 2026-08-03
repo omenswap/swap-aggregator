@@ -88,8 +88,13 @@ func (t *Transport) RoundTrip(r *http.Request) (*http.Response, error) {
 
 	resp, err := t.base.RoundTrip(r)
 	if err == nil && resp.StatusCode == http.StatusTooManyRequests {
+		after := resp.Header.Get("Retry-After")
+		if after == "" {
+			// BitcoinVN sends its own header instead of the standard one.
+			after = resp.Header.Get("X-RateLimit-Retry-After")
+		}
 		t.mu.Lock()
-		t.cooldown = time.Now().Add(retryAfter(resp.Header.Get("Retry-After")))
+		t.cooldown = time.Now().Add(retryAfter(after))
 		t.mu.Unlock()
 	}
 	return resp, err

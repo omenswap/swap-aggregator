@@ -109,3 +109,26 @@ func TestTransportRespectsContext(t *testing.T) {
 		t.Fatal("expected the queued request to give up with the context")
 	}
 }
+
+func TestTransportHonoursNonStandardRetryAfter(t *testing.T) {
+	var hits atomic.Int64
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		w.Header().Set("X-RateLimit-Retry-After", "45")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	c := &http.Client{Transport: NewTransport(nil, 0, 0)}
+	resp, err := c.Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if _, err := c.Get(srv.URL); err == nil {
+		t.Fatal("expected a cooldown from X-RateLimit-Retry-After")
+	}
+	if hits.Load() != 1 {
+		t.Errorf("%d requests reached the server", hits.Load())
+	}
+}

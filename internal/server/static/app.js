@@ -234,6 +234,7 @@
             : swapLocked ? "quote available · API key required to swap here"
             : q.has_api_key && q.err ? "saved API key was rejected"
             : q.link ? "swap on " + q.provider + "'s site"
+            : !isFixed() && q.rate_type === "fixed" ? "fixed rate"
             : q.from_amount && q.from_amount !== amountInput.value.trim()
               ? "send exactly " + fmt(q.from_amount) + " " + fromSel.value
               : (q.rate ? "rate " + fmt(q.rate) : "") + (q.fee ? "  fee " + q.fee : "");

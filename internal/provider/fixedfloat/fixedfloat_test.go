@@ -51,6 +51,20 @@ func newTestProvider(t *testing.T, h http.Handler) provider.Provider {
 	return p
 }
 
+func newTestProviderWith(t *testing.T, h http.Handler, cfg config.Provider) provider.Provider {
+	t.Helper()
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	cfg.Type = "fixedfloat"
+	cfg.URL = srv.URL + "/"
+	cfg.Enabled = true
+	p, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
 func authHandler(t *testing.T, path, response string, capture *map[string]any) http.Handler {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -175,7 +189,8 @@ func TestCreateSwap(t *testing.T) {
 	}
 }
 
-func TestCreateSwapSendsRefundAddress(t *testing.T) {
+// /api/v2/create takes no refund address; it is set later via /api/v2/emergency.
+func TestCreateSwapOmitsRefundAddress(t *testing.T) {
 	var body map[string]any
 	p := newTestProvider(t, authHandler(t, "/api/v2/create", orderJSON, &body))
 	_, err := p.CreateSwap(context.Background(), provider.SwapRequest{
@@ -184,8 +199,22 @@ func TestCreateSwapSendsRefundAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if body["refundAddress"] != "0xrefund" {
-		t.Errorf("request body = %v", body)
+	if _, ok := body["refundAddress"]; ok {
+		t.Errorf("sent an undocumented refundAddress: %v", body)
+	}
+}
+
+func TestQuoteAndCreateSendAffiliate(t *testing.T) {
+	var body map[string]any
+	p := newTestProviderWith(t, authHandler(t, "/api/v2/create", orderJSON, &body),
+		config.Provider{Name: "fixedfloat", APIKey: "testkey:testsecret", AffiliateCode: "REF1", AffiliateFeePercent: 0.6})
+	if _, err := p.CreateSwap(context.Background(), provider.SwapRequest{
+		From: "ETH", To: "BTC", Amount: "2", DestinationAddress: "bc1qdest",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if body["refcode"] != "REF1" || body["afftax"] != "0.6" {
+		t.Errorf("affiliate params missing: %v", body)
 	}
 }
 

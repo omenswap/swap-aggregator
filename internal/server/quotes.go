@@ -166,8 +166,13 @@ func (s *Server) handleQuotes(w http.ResponseWriter, r *http.Request) {
 			if swapNeedsKey {
 				link = swapLink(base, req)
 			}
+			// A provider may answer with a stronger guarantee than was asked for.
+			answered := q.RateType
+			if answered == "" {
+				answered = rateType
+			}
 			quotes[i] = quoteJSON{Provider: p.Name(), Rate: q.Pair.Rate, Fee: q.Pair.Fee,
-				FromAmount: q.FromAmount, ToAmount: q.ToAmount, RateType: string(rateType),
+				FromAmount: q.FromAmount, ToAmount: q.ToAmount, RateType: string(answered),
 				Err: q.Err, Link: link, SwapNeedsAPIKey: swapNeedsKey, HasAPIKey: hasUserKey}
 		})
 	}

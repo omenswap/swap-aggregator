@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,6 +44,7 @@ var canonicalOrder = []string{"BTC", "ETH", "SOL", "XMR", "LTC", "DOGE", "USDC",
 var statusMap = map[string]string{
 	"waiting":    "pending",
 	"confirming": "awaiting_confirmation",
+	"verifying":  "deposited",
 	"exchanging": "deposited",
 	"sending":    "deposited",
 	"finished":   "completed",
@@ -56,6 +58,7 @@ type client struct {
 	baseURL   string
 	apiKey    string
 	affiliate string
+	fee       float64
 	http      *http.Client
 }
 
@@ -65,6 +68,7 @@ func New(cfg config.Provider) (provider.Provider, error) {
 		baseURL:   strings.TrimRight(cfg.URL, "/"),
 		apiKey:    cfg.APIKey,
 		affiliate: cfg.AffiliateCode,
+		fee:       cfg.AffiliateFeePercent,
 		http:      provider.HTTPClient(cfg, 10*time.Second),
 	}, nil
 }
@@ -150,10 +154,20 @@ func (c *client) rateBody(route map[string]any, t provider.RateType, d provider.
 		"estimation": estimation(d),
 		"rate":       rateParam(t),
 	}
-	if c.affiliate != "" {
-		body["additional_fee_percent"] = json.Number(c.affiliate)
+	// The API rejects a custom partner fee on fixed-rate exchanges.
+	if t != provider.Fixed {
+		if fee := c.feePercent(); fee != "" {
+			body["additional_fee_percent"] = json.Number(fee)
+		}
 	}
 	return body
+}
+
+func (c *client) feePercent() string {
+	if c.fee > 0 {
+		return strconv.FormatFloat(c.fee, 'f', -1, 64)
+	}
+	return c.affiliate
 }
 
 func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider.Quote, error) {
@@ -255,6 +269,13 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 	body := c.rateBody(route, req.RateType, req.Direction)
 	body["amount"] = json.Number(req.Amount)
 	body["address"] = req.DestinationAddress
+	if req.RateType == provider.Fixed {
+		id, err := c.rateID(ctx, route, req)
+		if err != nil {
+			return provider.Swap{}, err
+		}
+		body["rate_id"] = id
+	}
 	if req.RefundAddress != "" {
 		body["refund_address"] = req.RefundAddress
 	}
@@ -263,6 +284,24 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 		return provider.Swap{}, err
 	}
 	return e.toSwap(), nil
+}
+
+// A fixed-rate exchange has to reference the estimate it was priced from.
+func (c *client) rateID(ctx context.Context, route map[string]any, req provider.SwapRequest) (string, error) {
+	body := c.rateBody(route, req.RateType, req.Direction)
+	body["amount"] = json.Number(req.Amount)
+	var est struct {
+		Rate struct {
+			ID string `json:"id"`
+		} `json:"rate"`
+	}
+	if err := c.post(ctx, "/v4/rates/estimated-amount", body, &est); err != nil {
+		return "", err
+	}
+	if est.Rate.ID == "" {
+		return "", fmt.Errorf("stealthex: no fixed rate available for %s/%s", req.From, req.To)
+	}
+	return est.Rate.ID, nil
 }
 
 func (c *client) Status(ctx context.Context, id string) (provider.Swap, error) {

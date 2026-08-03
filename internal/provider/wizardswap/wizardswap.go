@@ -51,6 +51,14 @@ type client struct {
 
 func (c *client) Brokered() bool { return true }
 
+// The api_key body field is what earns the referral share.
+func (c *client) referralKey() string {
+	if c.apiKey != "" {
+		return c.apiKey
+	}
+	return c.affiliate
+}
+
 func (c *client) SwapLink(req provider.QuoteRequest) string {
 	v := url.Values{}
 	if f, ok := coins[req.From]; ok {
@@ -116,8 +124,8 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		"currency_to":   to,
 		"amount_from":   req.Amount,
 	}
-	if c.apiKey != "" {
-		body["api_key"] = c.apiKey
+	if k := c.referralKey(); k != "" {
+		body["api_key"] = k
 	}
 	raw, err := c.post(ctx, "/api/estimate", body)
 	if err != nil {
@@ -201,8 +209,8 @@ func (c *client) CreateSwap(ctx context.Context, req provider.SwapRequest) (prov
 	if req.RefundAddress != "" {
 		body["refund_address"] = req.RefundAddress
 	}
-	if c.apiKey != "" {
-		body["api_key"] = c.apiKey
+	if k := c.referralKey(); k != "" {
+		body["api_key"] = k
 	}
 	raw, err := c.post(ctx, "/api/exchange", body)
 	if err != nil {

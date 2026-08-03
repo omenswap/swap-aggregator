@@ -299,3 +299,28 @@ func TestWithAPIKeyReturnsIsolatedClient(t *testing.T) {
 		t.Fatalf("keyed provider = %#v", keyed)
 	}
 }
+
+func TestCreateFixedSwapSendsRateID(t *testing.T) {
+	var createBody map[string]any
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v3/estimates", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("fixed") != "true" {
+			t.Errorf("estimate not requested as fixed: %s", r.URL.RawQuery)
+		}
+		w.Write([]byte(`{"result":{"estimatedAmount":"3200","rateId":"rate-7"}}`))
+	})
+	mux.HandleFunc("POST /v3/exchanges", func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&createBody)
+		w.Write([]byte(exchangeJSON))
+	})
+	p := newTestProvider(t, mux)
+	if _, err := p.CreateSwap(context.Background(), provider.SwapRequest{
+		From: "ETH", To: "USDC", Amount: "1", DestinationAddress: "0xdest",
+		Direction: provider.FromSide, RateType: provider.Fixed,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if createBody["rateId"] != "rate-7" {
+		t.Errorf("create body = %v", createBody)
+	}
+}

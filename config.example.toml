@@ -22,17 +22,21 @@ url = "https://omenswap.com"
 enabled = true
 affiliate_code = ""
 
+# affiliate_fee_percent is stealthex additional_fee_percent (0-20); floating rate only
+# rate limit: 600 req/min
 [[providers]]
 name = "stealthex"
 type = "stealthex"
 url = "https://api.stealthex.io"
 enabled = true
 api_key = ""
-# affiliate_code is stealthex additional_fee_percent, numeric e.g. "0.5"
 affiliate_code = ""
+affiliate_fee_percent = 0
 rate_limit = 0.3
 rate_burst = 3
 
+# partner commission is bound to the api key in the simpleswap dashboard
+# rate limit: 50 req / 10s, then a 1 minute ip ban
 [[providers]]
 name = "simpleswap"
 type = "simpleswap"
@@ -42,6 +46,8 @@ api_key = ""
 rate_limit = 1.0
 rate_burst = 3
 
+# affiliate_code is the refcode; affiliate_fee_percent is afftax (needs a refcode)
+# rate limit: 250 weight/min, and creating a swap costs 50
 [[providers]]
 name = "fixedfloat"
 type = "fixedfloat"
@@ -49,9 +55,11 @@ url = "https://ff.io"
 enabled = true
 # fixedfloat api_key is "key:secret"
 api_key = ""
+affiliate_fee_percent = 0
 rate_limit = 1.0
 rate_burst = 3
 
+# the referral share is earned by api_key; affiliate_code is used if api_key is empty
 [[providers]]
 name = "wizardswap"
 type = "wizardswap"
@@ -59,9 +67,11 @@ url = "https://www.wizardswap.io"
 enabled = true
 api_key = ""
 affiliate_code = ""
-rate_limit = 2.0
-rate_burst = 4
+# no documented rate limit; abusive ips are banned, so stay gentle
+rate_limit = 0.5
+rate_burst = 2
 
+# affiliate_code is the referrer; affiliate_fee_percent becomes markupRate (max 10%)
 [[providers]]
 name = "bitcoinvn"
 type = "bitcoinvn"
@@ -69,9 +79,12 @@ url = "https://bitcoinvn.io"
 enabled = true
 api_key = ""
 affiliate_code = ""
-rate_limit = 2.0
-rate_burst = 4
+affiliate_fee_percent = 0
+# no documented rate limit; abusive ips are banned, so stay gentle
+rate_limit = 0.5
+rate_burst = 2
 
+# affiliate_code is the affiliateToken
 [[providers]]
 name = "etzswap"
 type = "etzswap"
@@ -80,5 +93,6 @@ enabled = true
 # etzswap api_key is "public:secret"
 api_key = ""
 affiliate_code = ""
-rate_limit = 2.0
-rate_burst = 4
+# no documented rate limit; abusive ips are banned, so stay gentle
+rate_limit = 0.5
+rate_burst = 2

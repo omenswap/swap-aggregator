@@ -98,3 +98,15 @@ api_key = ""
 affiliate_code = ""
 rate_limit = 0.5
 rate_burst = 2
+
+# exolix works without a key; the key attributes swaps to a partner
+[[providers]]
+name = "exolix"
+type = "exolix"
+url = "https://exolix.com"
+enabled = true
+api_key = ""
+affiliate_code = ""
+# no documented rate limit; stay gentle
+rate_limit = 0.5
+rate_burst = 2

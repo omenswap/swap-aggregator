@@ -28,15 +28,20 @@ type coin struct {
 }
 
 var coins = map[string]coin{
-	"BTC":      {"BTC", "BTC"},
-	"DOGE":     {"DOGE", "DOGE"},
-	"ETH":      {"ETH", "ETH"},
-	"LTC":      {"LTC", "LTC"},
-	"SOL":      {"SOL", "SOL"},
-	"USDC":     {"USDC", "ETH"},
-	"USDT":     {"USDT", "ETH"},
-	"USDT_TRX": {"USDT", "TRX"},
-	"XMR":      {"XMR", "XMR"},
+	"BCH":       {"BCH", "BCH"},
+	"BNB":       {"BNB", "BSC"},
+	"TRX":       {"TRX", "TRX"},
+	"XRP":       {"XRP", "XRP"},
+	"ZEC":       {"ZEC", "ZEC"},
+	"BTC":       {"BTC", "BTC"},
+	"DOGE":      {"DOGE", "DOGE"},
+	"ETH":       {"ETH", "ETH"},
+	"LTC":       {"LTC", "LTC"},
+	"SOL":       {"SOL", "SOL"},
+	"USDC":      {"USDC", "ETH"},
+	"USDT":      {"USDT", "ETH"},
+	"USDT_TRON": {"USDT", "TRX"},
+	"XMR":       {"XMR", "XMR"},
 }
 
 // The published table only covers 0, 1-5, 6 and 10. The rest are read off the

@@ -131,7 +131,7 @@ func TestQuoteAboveMax(t *testing.T) {
 
 func TestQuoteUnsupportedPairLocal(t *testing.T) {
 	p := newTestProvider(t, http.NewServeMux())
-	q, err := p.Quote(context.Background(), provider.QuoteRequest{From: "BNB", To: "BTC", Amount: "100"})
+	q, err := p.Quote(context.Background(), provider.QuoteRequest{From: "NOTACOIN", To: "BTC", Amount: "100"})
 	if err != nil {
 		t.Fatal(err)
 	}

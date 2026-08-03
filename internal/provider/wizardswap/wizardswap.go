@@ -23,6 +23,7 @@ func init() {
 var symbols = []string{"BTC", "DOGE", "ETH", "LTC", "XMR"}
 
 var coins = map[string]string{
+	"ZEC":  "zec",
 	"BTC":  "btc",
 	"DOGE": "doge",
 	"ETH":  "eth",

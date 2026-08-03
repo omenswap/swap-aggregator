@@ -25,17 +25,17 @@ func init() {
 }
 
 var currencyCodes = map[string]string{
-	"BTC":      "BTC",
-	"ETH":      "ETH",
-	"SOL":      "SOL",
-	"XMR":      "XMR",
-	"LTC":      "LTC",
-	"DOGE":     "DOGE",
-	"USDC":     "USDCETH",
-	"USDC_POL": "USDCMATIC",
-	"USDT":     "USDTETH",
-	"USDT_POL": "USDTMATIC",
-	"USDT_TRX": "USDTTRC",
+	"BTC":       "BTC",
+	"ETH":       "ETH",
+	"SOL":       "SOL",
+	"XMR":       "XMR",
+	"LTC":       "LTC",
+	"DOGE":      "DOGE",
+	"USDC":      "USDCETH",
+	"USDC_POL":  "USDCMATIC",
+	"USDT":      "USDTETH",
+	"USDT_POL":  "USDTMATIC",
+	"USDT_TRON": "USDTTRC",
 }
 
 type client struct {

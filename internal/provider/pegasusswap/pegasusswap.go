@@ -31,14 +31,17 @@ type coin struct {
 // Codes and networks are uppercase, read from get-all-coins. The rate endpoint
 // tolerates lowercase but creating a transaction does not.
 var coins = map[string]coin{
-	"BTC":      {"BTC", "BTC"},
-	"ETH":      {"ETH", "ETH"},
-	"LTC":      {"LTC", "LTC"},
-	"SOL":      {"SOL", "SOL"},
-	"USDC":     {"USDC", "ETH"},
-	"USDT":     {"USDT", "ETH"},
-	"USDT_TRX": {"USDT", "TRX"},
-	"XMR":      {"XMR", "XMR"},
+	"BCH":       {"BCH", "BCH"},
+	"TRX":       {"TRX", "TRX"},
+	"XRP":       {"XRP", "XRP"},
+	"BTC":       {"BTC", "BTC"},
+	"ETH":       {"ETH", "ETH"},
+	"LTC":       {"LTC", "LTC"},
+	"SOL":       {"SOL", "SOL"},
+	"USDC":      {"USDC", "ETH"},
+	"USDT":      {"USDT", "ETH"},
+	"USDT_TRON": {"USDT", "TRX"},
+	"XMR":       {"XMR", "XMR"},
 }
 
 var statusMap = map[int]string{

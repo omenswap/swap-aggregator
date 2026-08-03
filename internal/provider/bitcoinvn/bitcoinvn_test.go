@@ -109,7 +109,7 @@ func TestQuoteAboveMax(t *testing.T) {
 
 func TestQuoteUnsupportedPair(t *testing.T) {
 	p := newTestProvider(t, http.NewServeMux())
-	q, err := p.Quote(context.Background(), provider.QuoteRequest{From: "BNB", To: "BTC", Amount: "100"})
+	q, err := p.Quote(context.Background(), provider.QuoteRequest{From: "NOTACOIN", To: "BTC", Amount: "100"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestGatingAndSwapLink(t *testing.T) {
 	if !keyed.(provider.Gated).Brokered() {
 		t.Error("expected brokered with key")
 	}
-	link = keyed.(provider.Linker).SwapLink(provider.QuoteRequest{From: "USDT_TRX", To: "USDC_POL", Amount: "100"})
+	link = keyed.(provider.Linker).SwapLink(provider.QuoteRequest{From: "USDT_TRON", To: "USDC_POL", Amount: "100"})
 	for _, want := range []string{"deposit=usdttrc20", "settle=usdcpolygon2", "depositAmount=100"} {
 		if !strings.Contains(link, want) {
 			t.Errorf("link %q missing %q", link, want)

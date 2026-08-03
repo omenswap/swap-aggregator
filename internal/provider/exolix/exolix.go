@@ -25,19 +25,22 @@ type coin struct {
 	network string
 }
 
-var symbols = []string{"BTC", "DOGE", "ETH", "LTC", "SOL", "USDC", "USDC_POL", "USDT", "USDT_TRX", "XMR"}
+var symbols = []string{"BTC", "DOGE", "ETH", "LTC", "SOL", "USDC", "USDC_POL", "USDT", "USDT_TRON", "XMR"}
 
 var coins = map[string]coin{
-	"BTC":      {"BTC", "BTC"},
-	"DOGE":     {"DOGE", "DOGE"},
-	"ETH":      {"ETH", "ETH"},
-	"LTC":      {"LTC", "LTC"},
-	"SOL":      {"SOL", "SOL"},
-	"USDC":     {"USDC", "ETH"},
-	"USDC_POL": {"USDC", "MATIC"},
-	"USDT":     {"USDT", "ETH"},
-	"USDT_TRX": {"USDT", "TRX"},
-	"XMR":      {"XMR", "XMR"},
+	"BCH":       {"BCH", "BCH"},
+	"TRX":       {"TRX", "TRX"},
+	"XRP":       {"XRP", "XRP"},
+	"BTC":       {"BTC", "BTC"},
+	"DOGE":      {"DOGE", "DOGE"},
+	"ETH":       {"ETH", "ETH"},
+	"LTC":       {"LTC", "LTC"},
+	"SOL":       {"SOL", "SOL"},
+	"USDC":      {"USDC", "ETH"},
+	"USDC_POL":  {"USDC", "MATIC"},
+	"USDT":      {"USDT", "ETH"},
+	"USDT_TRON": {"USDT", "TRX"},
+	"XMR":       {"XMR", "XMR"},
 }
 
 var statusMap = map[string]string{

@@ -19,20 +19,26 @@ func init() {
 	provider.Register("bitcoinvn", New)
 }
 
-var symbols = []string{"BTC", "DOGE", "ETH", "LTC", "SOL", "USDC", "USDC_POL", "USDT", "USDT_POL", "USDT_TRX", "XMR"}
+var symbols = []string{"BTC", "DOGE", "ETH", "LTC", "SOL", "USDC", "USDC_POL", "USDT", "USDT_POL", "USDT_TRON", "XMR"}
 
 var methods = map[string]string{
-	"BTC":      "btc",
-	"DOGE":     "doge",
-	"ETH":      "eth",
-	"LTC":      "ltc",
-	"SOL":      "sol",
-	"USDC":     "usdc",
-	"USDC_POL": "usdcpolygon2",
-	"USDT":     "usdterc20",
-	"USDT_POL": "usdtpolygon",
-	"USDT_TRX": "usdttrc20",
-	"XMR":      "xmr",
+	"BCH":       "bch",
+	"BNB":       "bnb",
+	"DAI":       "dai",
+	"TRX":       "trx",
+	"XRP":       "xrp",
+	"ZEC":       "zec",
+	"BTC":       "btc",
+	"DOGE":      "doge",
+	"ETH":       "eth",
+	"LTC":       "ltc",
+	"SOL":       "sol",
+	"USDC":      "usdc",
+	"USDC_POL":  "usdcpolygon2",
+	"USDT":      "usdterc20",
+	"USDT_POL":  "usdtpolygon",
+	"USDT_TRON": "usdttrc20",
+	"XMR":       "xmr",
 }
 
 var statusMap = map[string]string{

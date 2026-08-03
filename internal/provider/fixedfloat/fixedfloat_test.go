@@ -120,7 +120,7 @@ func TestQuoteComputesAmount(t *testing.T) {
 func TestQuoteMapsCurrencyCodes(t *testing.T) {
 	var body map[string]any
 	p := newTestProvider(t, authHandler(t, "/api/v2/price", priceJSON, &body))
-	if _, err := p.Quote(context.Background(), provider.QuoteRequest{From: "USDT_TRX", To: "USDC_POL", Amount: "2"}); err != nil {
+	if _, err := p.Quote(context.Background(), provider.QuoteRequest{From: "USDT_TRON", To: "USDC_POL", Amount: "2"}); err != nil {
 		t.Fatal(err)
 	}
 	if body["fromCcy"] != "USDTTRC" || body["toCcy"] != "USDCMATIC" {
@@ -281,7 +281,7 @@ func TestPairsExcludesSameToken(t *testing.T) {
 		}
 		seen[pr.From+"/"+pr.To] = true
 	}
-	for _, want := range []string{"BTC/ETH", "XMR/BTC", "USDT/USDT_TRX", "SOL/DOGE", "LTC/USDC_POL", "USDC/BTC"} {
+	for _, want := range []string{"BTC/ETH", "XMR/BTC", "USDT/USDT_TRON", "SOL/DOGE", "LTC/USDC_POL", "USDC/BTC"} {
 		if !seen[want] {
 			t.Errorf("missing pair %s", want)
 		}

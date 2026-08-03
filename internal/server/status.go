@@ -61,6 +61,7 @@ func (s *Server) fetchSwap(r *http.Request) (provider.Swap, string, int) {
 }
 
 type statusData struct {
+	Brand    brand
 	Provider string
 	Swap     swapJSON
 	PollURL  string
@@ -75,6 +76,7 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.PathValue("provider")
 	data := statusData{
+		Brand:    s.branding(),
 		Provider: name,
 		Swap:     toSwapJSON(swap),
 		PollURL:  "/api/swap/" + url.PathEscape(name) + "/" + url.PathEscape(swap.ID),

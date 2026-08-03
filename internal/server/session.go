@@ -100,6 +100,7 @@ type sessionRow struct {
 }
 
 type swapsData struct {
+	Brand brand
 	Swaps []sessionRow
 }
 
@@ -124,5 +125,5 @@ func (s *Server) handleSwapsPage(w http.ResponseWriter, r *http.Request) {
 		rows = append(rows, row)
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	s.tmpl.ExecuteTemplate(w, "swaps.html", swapsData{Swaps: rows})
+	s.tmpl.ExecuteTemplate(w, "swaps.html", swapsData{Brand: s.branding(), Swaps: rows})
 }

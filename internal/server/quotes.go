@@ -58,6 +58,7 @@ type formData struct {
 }
 
 type indexData struct {
+	Brand     brand
 	Tokens    []string
 	Providers []string
 	PairData  template.JS
@@ -117,7 +118,7 @@ func (s *Server) renderIndex(w http.ResponseWriter, errMsg string, form formData
 	for _, p := range s.providers {
 		names = append(names, p.Name())
 	}
-	data := indexData{Tokens: tokens, Providers: names, PairData: template.JS(pairJSON),
+	data := indexData{Brand: s.branding(), Tokens: tokens, Providers: names, PairData: template.JS(pairJSON),
 		Error: errMsg, Form: form}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	s.tmpl.ExecuteTemplate(w, "index.html", data)

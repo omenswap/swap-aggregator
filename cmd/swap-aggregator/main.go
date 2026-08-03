@@ -46,6 +46,7 @@ func main() {
 
 	s := server.New(providers, cfg.TTL())
 	s.SetThemeCSS(cfg.Theme.CSS())
+	s.SetSiteName(cfg.SiteName)
 
 	srv := &http.Server{
 		Addr:    cfg.Listen,

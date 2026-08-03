@@ -47,7 +47,6 @@ body {
   font-weight: 700;
   color: var(--ink);
   text-decoration: none;
-  text-transform: lowercase;
 }
 .wordmark span { color: var(--muted); }
 

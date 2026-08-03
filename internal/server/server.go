@@ -5,6 +5,7 @@ import (
 	"embed"
 	"html/template"
 	"net/http"
+	"strings"
 	"time"
 
 	"omenswap.com/swap-aggregator/internal/cache"
@@ -22,11 +23,33 @@ type Server struct {
 	pairCache     *cache.Cache[[]provider.Pair]
 	credentialKey []byte
 	themeCSS      string
+	siteName      string
 	tmpl          *template.Template
 	mux           *http.ServeMux
 }
 
 func (s *Server) SetThemeCSS(css string) { s.themeCSS = css }
+
+func (s *Server) SetSiteName(name string) { s.siteName = name }
+
+const defaultSiteName = "Swap Aggregator"
+
+// The wordmark is two-tone, so the name is split on its first space. A
+// single-word name simply has no second half.
+func (s *Server) branding() brand {
+	name := strings.TrimSpace(s.siteName)
+	if name == "" {
+		name = defaultSiteName
+	}
+	head, tail, _ := strings.Cut(name, " ")
+	return brand{Name: name, Head: head, Tail: tail}
+}
+
+type brand struct {
+	Name string
+	Head string
+	Tail string
+}
 
 func New(providers []provider.Provider, ttl time.Duration) *Server {
 	s := &Server{

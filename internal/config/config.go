@@ -58,6 +58,7 @@ type Theme struct {
 }
 
 type Config struct {
+	SiteName  string     `toml:"site_name"`
 	Listen    string     `toml:"listen"`
 	CacheTTL  duration   `toml:"cache_ttl"`
 	Theme     Theme      `toml:"theme"`
@@ -125,6 +126,9 @@ func Load(path string) (*Config, error) {
 	var c Config
 	if _, err := toml.DecodeFile(path, &c); err != nil {
 		return nil, err
+	}
+	if strings.TrimSpace(c.SiteName) == "" {
+		c.SiteName = "Swap Aggregator"
 	}
 	if c.Listen == "" {
 		c.Listen = ":8000"

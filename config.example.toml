@@ -1,3 +1,4 @@
+site_name = "Swap Aggregator"
 listen = ":8000"
 cache_ttl = "30s"
 

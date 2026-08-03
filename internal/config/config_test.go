@@ -265,3 +265,23 @@ affiliate_fee_percent = `+bad+`
 		}
 	}
 }
+
+func TestSiteNameDefault(t *testing.T) {
+	c, err := Load(writeTemp(t, themeProvider))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.SiteName != "Swap Aggregator" {
+		t.Errorf("SiteName = %q", c.SiteName)
+	}
+}
+
+func TestSiteNameConfigured(t *testing.T) {
+	c, err := Load(writeTemp(t, "site_name = \"Omen Swap\"\n"+themeProvider))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.SiteName != "Omen Swap" {
+		t.Errorf("SiteName = %q", c.SiteName)
+	}
+}

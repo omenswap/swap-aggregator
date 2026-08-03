@@ -1,10 +1,10 @@
 {{define "header"}}<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Swap Aggregator</title>
+<title>{{.Brand.Name}}</title>
 <link rel="stylesheet" href="/static/style.css">
 <link rel="stylesheet" href="/theme.css">
 <header class="top">
-  <a class="wordmark" href="/">swap<span>aggregator</span></a>
+  <a class="wordmark" href="/">{{.Brand.Head}}{{if .Brand.Tail}}<span>{{.Brand.Tail}}</span>{{end}}</a>
   <a class="nav-link" href="/swaps">your swaps</a>
 </header>
 {{end}}

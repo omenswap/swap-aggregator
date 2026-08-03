@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"html/template"
+	"log"
 	"math/big"
 	"net/http"
 	"sort"
@@ -159,6 +160,7 @@ func (s *Server) handleQuotes(w http.ResponseWriter, r *http.Request) {
 			defer cancel()
 			q, err := p.Quote(ctx, req)
 			if err != nil {
+				log.Println(err)
 				quotes[i] = quoteJSON{Provider: p.Name(), Err: "provider unavailable", Link: swapLink(base, req), SwapNeedsAPIKey: swapNeedsKey, HasAPIKey: hasUserKey}
 				return
 			}

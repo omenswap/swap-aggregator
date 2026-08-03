@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -47,8 +48,9 @@ func (s *Server) handleCreateSwap(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	swap, err := p.CreateSwap(ctx, req)
 	if err != nil {
+		log.Println(err.Error())
 		q := url.Values{
-			"error":               {err.Error()},
+			"error":               {"there was an issue with the provider API"},
 			"provider":            {name},
 			"from":                {req.From},
 			"to":                  {req.To},

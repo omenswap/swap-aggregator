@@ -22,30 +22,6 @@ url = "https://omenswap.com"
 enabled = true
 affiliate_code = ""
 
-# affiliate_fee_percent is stealthex additional_fee_percent (0-20); floating rate only
-# rate limit: 600 req/min
-[[providers]]
-name = "stealthex"
-type = "stealthex"
-url = "https://api.stealthex.io"
-enabled = true
-api_key = ""
-affiliate_code = ""
-affiliate_fee_percent = 0
-rate_limit = 0.3
-rate_burst = 3
-
-# partner commission is bound to the api key in the simpleswap dashboard
-# rate limit: 50 req / 10s, then a 1 minute ip ban
-[[providers]]
-name = "simpleswap"
-type = "simpleswap"
-url = "https://api.simpleswap.io"
-enabled = true
-api_key = ""
-rate_limit = 1.0
-rate_burst = 3
-
 # affiliate_code is the refcode; affiliate_fee_percent is afftax (needs a refcode)
 # rate limit: 250 weight/min, and creating a swap costs 50
 [[providers]]
@@ -56,6 +32,7 @@ enabled = true
 # fixedfloat api_key is "key:secret"
 api_key = ""
 affiliate_fee_percent = 0
+affiliate_code = ""
 rate_limit = 1.0
 rate_burst = 3
 
@@ -94,5 +71,29 @@ enabled = true
 api_key = ""
 affiliate_code = ""
 # no documented rate limit; abusive ips are banned, so stay gentle
+rate_limit = 0.5
+rate_burst = 2
+
+# swapuz works without a key; the key only attributes swaps to a partner
+[[providers]]
+name = "swapuz"
+type = "swapuz"
+url = "https://api.swapuz.com"
+enabled = true
+api_key = ""
+affiliate_code = ""
+# no documented rate limit; abusive ips are banned, so stay gentle
+rate_limit = 0.5
+rate_burst = 2
+
+# pegasusswap needs a key for everything, quotes included
+# api_key is "public:secret"; attribution is tied to the key, not a parameter
+[[providers]]
+name = "pegasusswap"
+type = "pegasusswap"
+url = "https://api.pegasusswap.com"
+enabled = true
+api_key = ""
+affiliate_code = ""
 rate_limit = 0.5
 rate_burst = 2

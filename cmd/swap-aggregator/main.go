@@ -16,8 +16,8 @@ import (
 	_ "omenswap.com/swap-aggregator/internal/provider/etzswap"
 	_ "omenswap.com/swap-aggregator/internal/provider/fixedfloat"
 	_ "omenswap.com/swap-aggregator/internal/provider/omenswap"
-	_ "omenswap.com/swap-aggregator/internal/provider/simpleswap"
-	_ "omenswap.com/swap-aggregator/internal/provider/stealthex"
+	_ "omenswap.com/swap-aggregator/internal/provider/pegasusswap"
+	_ "omenswap.com/swap-aggregator/internal/provider/swapuz"
 	_ "omenswap.com/swap-aggregator/internal/provider/wizardswap"
 	"omenswap.com/swap-aggregator/internal/server"
 )

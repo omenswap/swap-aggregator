@@ -3,9 +3,9 @@
 <p align="center">Compare rates across popular crypto instant exchanges.
 One unified interface for all your cross-chain swaps.</p>
 
-<div align="center">![](./assets/screenshot.png)</div>
+<div align="center"><img src="./assets/screenshot.png" /></div>
 
-<p align="center">Inspired by [Trocador](https://trocador.app) and [OrangeFren](https://orangefren.com).</p>
+<p align="center">Inspired by <a href="https://trocador.app">Trocador</a> and <a href="https://orangefren.com">OrangeFren</a>.</p>
 
 ## Supported Providers
 

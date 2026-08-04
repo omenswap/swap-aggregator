@@ -1,11 +1,11 @@
-# Swap Aggregator
+<h1 align="center">Swap Aggregator</h1>
 
 <p align="center">Compare rates across popular crypto instant exchanges.
 One unified interface for all your cross-chain swaps.</p>
 
 <div align="center"><img src="./assets/screenshot.png" /></div>
 
-<p align="center">Inspired by <a href="https://trocador.app">Trocador</a> and <a href="https://orangefren.com">OrangeFren</a>.</p>
+<p align="center">Inspired by <a href="https://trocador.app">Trocador</a>, <a href="https://orangefren.com">OrangeFren</a>, and <a href="https://swapzone.io/">Swapzone</a>.</p>
 
 ## Supported Providers
 

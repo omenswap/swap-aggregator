@@ -192,3 +192,26 @@ func TestWithAPIKeyRejectsBadFormat(t *testing.T) {
 		t.Error("keyed clone must be brokered")
 	}
 }
+
+func TestQuoteMapsLimitMessages(t *testing.T) {
+	cases := map[string]string{
+		"Minimum exchange amount is 0.00015706":                                           "below minimum of 0.00015706 BTC",
+		"Amount to exchange is higher the possible max amount to exchange. Max amount 10": "above maximum of 10 BTC",
+		"Such exchange pair is not available":                                             "pair not supported",
+	}
+	for msg, want := range cases {
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /api/private/exchange-coin", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]any{"status": 400, "message": msg})
+		})
+		p := newTestProvider(t, mux)
+		q, err := p.Quote(context.Background(), provider.QuoteRequest{From: "BTC", To: "XMR", Amount: "1"})
+		if err != nil {
+			t.Fatalf("%s: returned a hard error: %v", msg, err)
+		}
+		if q.Err != want {
+			t.Errorf("%q mapped to %q, want %q", msg, q.Err, want)
+		}
+	}
+}

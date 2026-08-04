@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -188,6 +189,10 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 
 	var r apiRate
 	if err := c.get(ctx, "exchange-coin", "/api/private/exchange-coin?"+v.Encode(), &r); err != nil {
+		if msg := errorMessage(err, req.From); msg != "" {
+			q.Err = msg
+			return q, nil
+		}
 		return provider.Quote{}, err
 	}
 	q.Pair.MinFrom = r.MinAmount.String()
@@ -207,6 +212,34 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 		q.Err = "pair currently unavailable"
 	}
 	return q, nil
+}
+
+// Limits are quoted back inside the message rather than as fields.
+var (
+	minAmountMsg = regexp.MustCompile(`[Mm]inimum exchange amount is\s+([0-9.]+)`)
+	maxAmountMsg = regexp.MustCompile(`[Mm]ax amount\s+([0-9.]+)`)
+)
+
+func errorMessage(err error, from string) string {
+	raw := err.Error()
+	msg := strings.ToLower(raw)
+	switch {
+	case strings.Contains(msg, "pair is not available"), strings.Contains(msg, "pair unavailable"):
+		return "pair not supported"
+	case strings.Contains(msg, "minimum exchange amount"):
+		if m := minAmountMsg.FindStringSubmatch(raw); m != nil {
+			return fmt.Sprintf("below minimum of %s %s", m[1], from)
+		}
+		return "amount below minimum"
+	case strings.Contains(msg, "max amount"):
+		if m := maxAmountMsg.FindStringSubmatch(raw); m != nil {
+			return fmt.Sprintf("above maximum of %s %s", m[1], from)
+		}
+		return "amount above maximum"
+	case strings.Contains(msg, "invalid withdrawal address"):
+		return "invalid destination address"
+	}
+	return ""
 }
 
 type apiSide struct {

@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -159,7 +160,7 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 
 	var r apiRate
 	if err := c.get(ctx, "/api/home/v1/rate/?"+v.Encode(), &r); err != nil {
-		if msg := errorMessage(err); msg != "" {
+		if msg := errorMessage(err, req.From); msg != "" {
 			q.Err = msg
 			return q, nil
 		}
@@ -184,12 +185,30 @@ func (c *client) Quote(ctx context.Context, req provider.QuoteRequest) (provider
 	return q, nil
 }
 
-// Unsupported pairs and bad amounts come back as free text, not a code.
-func errorMessage(err error) string {
-	msg := strings.ToLower(err.Error())
+// Everything comes back as free text, so the limit the API quotes back has to
+// be read out of the sentence.
+var requiredAmount = regexp.MustCompile(`required\s+([0-9.]+)`)
+
+func errorMessage(err error, from string) string {
+	raw := err.Error()
+	msg := strings.ToLower(raw)
+	limit := ""
+	if m := requiredAmount.FindStringSubmatch(raw); m != nil {
+		limit = m[1]
+	}
 	switch {
 	case strings.Contains(msg, "not available for market"):
 		return "pair not supported"
+	case strings.Contains(msg, "below the possible min"):
+		if limit != "" {
+			return fmt.Sprintf("below minimum of %s %s", limit, from)
+		}
+		return "amount below minimum"
+	case strings.Contains(msg, "over the possible max"):
+		if limit != "" {
+			return fmt.Sprintf("above maximum of %s %s", limit, from)
+		}
+		return "amount above maximum"
 	case strings.Contains(msg, "check amount"):
 		return "invalid amount"
 	}

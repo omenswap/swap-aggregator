@@ -161,3 +161,26 @@ func TestStatusFetchesByUID(t *testing.T) {
 		t.Errorf("swap = %+v", s)
 	}
 }
+
+// Limit failures are the visitor's problem, not an outage — they must not
+// surface as a transport error.
+func TestQuoteMapsLimitMessages(t *testing.T) {
+	cases := map[string]string{
+		"Amount to exchange is below the possible min amount to exchange. requested 0.00001 , required 0.0014": "below minimum of 0.0014 BTC",
+		"Amount to exchange is over the possible max amount to exchange. requested 9999999 , required 47.1246": "above maximum of 47.1246 BTC",
+	}
+	for msg, want := range cases {
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /api/home/v1/rate/", func(w http.ResponseWriter, r *http.Request) {
+			json.NewEncoder(w).Encode(map[string]any{"result": nil, "status": 400, "message": msg})
+		})
+		p := newTestProvider(t, mux, "")
+		q, err := p.Quote(context.Background(), provider.QuoteRequest{From: "BTC", To: "XMR", Amount: "1"})
+		if err != nil {
+			t.Fatalf("%s: returned a hard error: %v", msg, err)
+		}
+		if q.Err != want {
+			t.Errorf("mapped to %q, want %q", q.Err, want)
+		}
+	}
+}

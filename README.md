@@ -1,9 +1,11 @@
 # Swap Aggregator
 
-Compare rates across popular crypto instant exchanges.
-One unified interface for all your cross-chain swaps.
+<p align="center">Compare rates across popular crypto instant exchanges.
+One unified interface for all your cross-chain swaps.</p>
 
-Inspired by [Trocador](https://trocador.app) and [OrangeFren](https://orangefren.com).
+<div align="center">![](./assets/screenshot.png)</div>
+
+<p align="center">Inspired by [Trocador](https://trocador.app) and [OrangeFren](https://orangefren.com).</p>
 
 ## Supported Providers
 
@@ -47,6 +49,7 @@ If you want to host for external users, follow this guide for deploying on a Deb
 apt install nginx snapd git -y
 snap install --classic certbot
 snap install --classic go
+export PATH="$PATH:/snap/bin"
 
 # Download source
 cd /opt
@@ -103,5 +106,6 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
+systemctl daemon-reload
 systemctl enable --now swap-aggregator
 ```

@@ -1,0 +1,73 @@
+# Builds cross-platform binaries and attaches them to the GitHub release.
+
+name: Release
+
+on:
+  release:
+    types: [ published ]
+
+permissions:
+  contents: write
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+
+    - name: Build
+      env:
+        CGO_ENABLED: 0
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        binary=swap-aggregator
+        if [ "$GOOS" = "windows" ]; then binary=swap-aggregator.exe; fi
+        go build -v -trimpath -ldflags="-s -w" -o "dist/$binary" ./cmd/swap-aggregator
+
+    - name: Package
+      id: package
+      env:
+        TAG: ${{ github.event.release.tag_name }}
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        cp README.md config.example.toml dist/
+        name="swap-aggregator_${TAG}_${GOOS}_${GOARCH}"
+        if [ "$GOOS" = "windows" ]; then
+          archive="${name}.zip"
+          (cd dist && zip -r "../$archive" .)
+        else
+          archive="${name}.tar.gz"
+          tar -czf "$archive" -C dist .
+        fi
+        sha256sum "$archive" > "$archive.sha256"
+        echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+    - name: Attach to release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ github.event.release.tag_name }}
+        ARCHIVE: ${{ steps.package.outputs.archive }}
+      run: gh release upload "$TAG" "$ARCHIVE" "$ARCHIVE.sha256" --clobber

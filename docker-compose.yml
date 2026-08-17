@@ -1,0 +1,27 @@
+services:
+  swap-aggregator:
+    image: ghcr.io/omenswap/swap-aggregator:latest
+    container_name: swap-aggregator
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    volumes:
+      - ./config.toml:/config/config.toml:ro
+
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    # The image runs as UID 10001, which must be able to read config.toml. If
+    # yours is chmod 600 and owned by your host user, uncomment this to match.
+    # user: "1000:1000"
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

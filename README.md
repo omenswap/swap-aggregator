@@ -42,6 +42,37 @@ go run ./cmd/swap-aggregator/main.go
 # navigate to http://localhost:8000 in your browser
 ```
 
+## Docker
+Quick, reproducable setup with Docker.
+
+```bash
+# Grab a config to edit (or copy config.example.toml from a checkout)
+docker run --rm --entrypoint cat \
+  ghcr.io/omenswap/swap-aggregator:latest /app/config.example.toml > config.toml
+vim config.toml
+
+# Run it
+docker run -d --name swap-aggregator \
+  -p 8000:8000 \
+  -v "$PWD/config.toml:/config/config.toml:ro" \
+  --restart unless-stopped \
+  ghcr.io/omenswap/swap-aggregator:latest
+# navigate to http://localhost:8000 in your browser
+```
+
+Or with Compose, using the `docker-compose.yml` in this repo:
+
+```bash
+cp config.example.toml config.toml
+vim config.toml
+docker compose up -d
+```
+
+To build it yourself instead of pulling, run `docker build -t swap-aggregator .`
+
+The compose file publishes to `127.0.0.1` only, for the reverse-proxy setup
+below. Change it to `"8000:8000"` if you are terminating TLS elsewhere.
+
 ## Production Deployment
 If you want to host for external users, follow this guide for deploying on a Debian-based server.
 ```bash

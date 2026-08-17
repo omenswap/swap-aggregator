@@ -1,0 +1,14 @@
+config.toml
+
+.git
+.github
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+assets
+dist
+/swap-aggregator
+*.tar.gz
+*.zip
